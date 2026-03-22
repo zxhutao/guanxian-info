@@ -109,6 +109,36 @@
       }
     },
     {
+      "path": "pages/membership/index",
+      "style": {
+        "navigationBarTitleText": "会员中心"
+      }
+    },
+    {
+      "path": "pages/membership/benefits",
+      "style": {
+        "navigationBarTitleText": "会员权益"
+      }
+    },
+    {
+      "path": "pages/membership/orders",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
+    },
+    {
+      "path": "pages/membership/points",
+      "style": {
+        "navigationBarTitleText": "积分明细"
+      }
+    },
+    {
+      "path": "pages/membership/vip",
+      "style": {
+        "navigationBarTitleText": "升级VIP"
+      }
+    },
+    {
       "path": "pages/job/my",
       "style": {
         "navigationBarTitleText": "我的职位"

@@ -51,6 +51,27 @@
       </view>
 
       <view class="menu-group">
+        <view class="menu-group-title">会员服务</view>
+        <view class="menu-item" @click="goPage('/pages/membership/index')">
+          <u-icon name="star-fill" size="40rpx" color="#FFD700" />
+          <text class="menu-text">会员中心</text>
+          <view class="member-tag">白银会员</view>
+          <u-icon name="arrow-right" size="32rpx" color="#999" />
+        </view>
+        <view class="menu-item" @click="goPage('/pages/membership/orders')">
+          <u-icon name="order" size="40rpx" color="#2196F3" />
+          <text class="menu-text">我的订单</text>
+          <u-icon name="arrow-right" size="32rpx" color="#999" />
+        </view>
+        <view class="menu-item" @click="goPage('/pages/membership/points')">
+          <u-icon name="red-packet" size="40rpx" color="#E63946" />
+          <text class="menu-text">我的积分</text>
+          <text class="points-num">580</text>
+          <u-icon name="arrow-right" size="32rpx" color="#999" />
+        </view>
+      </view>
+
+      <view class="menu-group">
         <view class="menu-group-title">常用功能</view>
         <view class="menu-item" @click="goPageFree('/pages/user/collect')">
           <u-icon name="heart-fill" size="40rpx" color="#E63946" />
@@ -265,6 +286,21 @@ const goCustomerService = () => {
         align-items: center;
         justify-content: center;
         padding: 0 10rpx;
+        margin-right: 10rpx;
+      }
+
+      .member-tag {
+        background: linear-gradient(135deg, #c0c0c0, #808080);
+        color: #fff;
+        font-size: 20rpx;
+        padding: 4rpx 12rpx;
+        border-radius: 16rpx;
+        margin-right: 10rpx;
+      }
+
+      .points-num {
+        color: #E63946;
+        font-size: 28rpx;
         margin-right: 10rpx;
       }
     }
