@@ -160,9 +160,7 @@ const detail = ref({
 })
 
 const shareTrip = () => {
-  uni.showShareMenu({
-    withShareTicket: true
-  })
+  try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
 }
 
 const makeCall = () => {

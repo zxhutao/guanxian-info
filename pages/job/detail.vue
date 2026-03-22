@@ -87,9 +87,7 @@ const handleFavorite = () => {
 }
 
 const handleShare = () => {
-  uni.showShareMenu({
-    withShareTicket: true
-  })
+  try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
 }
 
 // 分享给好友

@@ -255,7 +255,7 @@ onLoad((options) => {
   reviews.value = reviewData
 
   // 启用分享功能
-  uni.showShareMenu({ withShareTicket: true })
+  try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
 })
 
 // 分享给好友
@@ -277,7 +277,7 @@ onShareTimeline(() => {
 })
 
 const handleShare = () => {
-  uni.showShareMenu({ withShareTicket: true })
+  try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
 }
 
 const callService = () => {
