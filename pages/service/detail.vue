@@ -83,11 +83,16 @@
     <view class="bottom-bar">
       <view class="action-icons">
         <view class="action-icon" @click="toggleFavorite">
-          <text>{{ isFavorite ? '❤️' : '🤍' }}</text>
-          <text class="icon-text">收藏</text>
+          <view class="icon-circle" :class="{ active: isFavorite }">
+            <text v-if="isFavorite">★</text>
+            <text v-else>☆</text>
+          </view>
+          <text class="icon-text">{{ isFavorite ? '已收藏' : '收藏' }}</text>
         </view>
         <view class="action-icon" @click="shareService">
-          <text>🔗</text>
+          <view class="icon-circle">
+            <text>↗</text>
+          </view>
           <text class="icon-text">分享</text>
         </view>
       </view>
@@ -544,21 +549,39 @@ onShareTimeline(() => ({
   display: flex;
   align-items: center;
   padding: 20rpx 30rpx;
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   background: #fff;
   box-shadow: 0 -4rpx 20rpx rgba(0,0,0,0.05);
   
   .action-icons {
     display: flex;
-    gap: 40rpx;
+    gap: 50rpx;
     
     .action-icon {
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 4rpx;
+      gap: 6rpx;
+      
+      .icon-circle {
+        width: 56rpx;
+        height: 56rpx;
+        background: #f5f5f5;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28rpx;
+        color: #666;
+        
+        &.active {
+          background: #FFF0F0;
+          color: #E63946;
+        }
+      }
       
       .icon-text {
-        font-size: 20rpx;
+        font-size: 22rpx;
         color: #666;
       }
     }
@@ -566,7 +589,7 @@ onShareTimeline(() => ({
   
   .book-btn {
     flex: 1;
-    margin-left: 30rpx;
+    margin-left: 40rpx;
     background: linear-gradient(135deg, #E63946, #FF6B6B);
     color: #fff;
     text-align: center;
