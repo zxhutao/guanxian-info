@@ -180,9 +180,7 @@ const toggleCollect = () => {
 }
 
 const shareHouse = () => {
-  uni.showShareMenu({
-    withShareTicket: true
-  })
+  try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
 }
 
 const contactOwner = () => {
