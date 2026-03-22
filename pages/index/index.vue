@@ -10,11 +10,18 @@
 
     <!-- 轮播图 -->
     <view class="banner-section">
-      <swiper class="banner-swiper" autoplay circular indicator-dots>
+      <swiper
+        class="banner-swiper"
+        :autoplay="true"
+        :circular="true"
+        :indicator-dots="true"
+        :interval="3000"
+        :duration="500"
+      >
         <!-- 品牌展示 Banner -->
         <swiper-item>
           <view class="banner-item brand-banner">
-            <image class="brand-logo" src="/static/images/logo.png" mode="aspectFit" />
+            <image class="brand-logo" src="/static/images/logo.png" mode="aspectFit" :lazy-load="true" />
             <view class="brand-info">
               <text class="brand-name">冠帮帮</text>
               <text class="brand-slogan">冠县人必备的生活入口</text>
@@ -164,18 +171,19 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, shallowRef } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 
-// 热门职位 - 静态数据
-const hotJobs = ref([
+// 使用 shallowRef 减少深层响应式开销，提升性能
+// 热门职位 - 静态数据（使用 Object.freeze 冻结）
+const hotJobs = shallowRef(Object.freeze([
   { id: 1, title: '普工/操作工', company: '冠县光明玻璃厂', salary: '5000-8000元/月', location: '冠县工业园区', tags: ['包吃', '包住', '五险'] },
   { id: 2, title: '质检员', company: '山东华兴金属', salary: '4500-6000元/月', location: '冠县开发区', tags: ['长白班', '环境好'] },
   { id: 3, title: '叉车司机', company: '冠县顺达物流', salary: '5500-7000元/月', location: '冠县物流园', tags: ['持证上岗', '加班费'] }
-])
+]))
 
-// 生活服务
-const services = ref([
+// 生活服务 - 冻结数据
+const services = shallowRef(Object.freeze([
   { name: '家政保洁', icon: '🧹', category: 'housekeeping' },
   { name: '家电维修', icon: '🔧', category: 'appliance' },
   { name: '开锁疏通', icon: '🔑', category: 'locksmith' },
@@ -184,23 +192,23 @@ const services = ref([
   { name: '婚庆摄影', icon: '📷', category: 'photo' },
   { name: '装修建材', icon: '🏠', category: 'renovation' },
   { name: '汽车服务', icon: '🚗', category: 'car' }
-])
+]))
 
-// 护工推荐 - 静态数据
-const caregivers = ref([
+// 护工推荐 - 静态数据（冻结）
+const caregivers = shallowRef(Object.freeze([
   { id: 1, name: '张阿姨', experience: 5, skill: '老年护理', price: '200元/天', rating: 4.9 },
   { id: 2, name: '李大姐', experience: 3, skill: '康复护理', price: '220元/天', rating: 4.8 }
-])
+]))
 
-// 快捷入口
-const quickEntries = [
+// 快捷入口 - 使用 Object.freeze 冻结
+const quickEntries = Object.freeze([
   { icon: '💼', label: '找工作', path: '/pages/job/list', color: '#E63946' },
   { icon: '🔧', label: '生活服务', path: '/pages/service/index', color: '#FF6B35' },
   { icon: '👴', label: '养老护理', path: '/pages/nursing/index', color: '#4CAF50' },
   { icon: '🏠', label: '房屋租售', path: '/pages/house/list', color: '#2196F3' },
   { icon: '🚗', label: '顺风车', path: '/pages/carpool/list', color: '#9C27B0' },
   { icon: '📰', label: '本地资讯', path: '/pages/info/index', color: '#FF9800' }
-]
+])
 
 // 跳转搜索
 const toSearch = () => {
