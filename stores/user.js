@@ -21,27 +21,54 @@ export const useUserStore = defineStore('user', () => {
   // 微信登录
   const login = async () => {
     try {
-      const { code } = await uni.login()
-      
+      // 显示登录中状态
+      uni.showLoading({ title: '登录中...', mask: true })
+
+      // 获取微信登录 code
+      const loginRes = await uni.login()
+
+      if (!loginRes.code) {
+        throw new Error('获取登录凭证失败')
+      }
+
       // 调用云函数登录
-      // const result = await uniCloud.callFunction({
-      //   name: 'login',
-      //   data: { code }
-      // })
-      
-      // 模拟登录成功
-      const mockToken = 'token_' + Date.now()
-      token.value = mockToken
-      uni.setStorageSync('token', mockToken)
-      
-      console.log('登录成功')
-      return mockToken
+      const result = await uniCloud.callFunction({
+        name: 'login',
+        data: { code: loginRes.code }
+      })
+
+      uni.hideLoading()
+
+      if (result.success && result.result.success) {
+        const data = result.result.data
+
+        // 保存 token
+        token.value = data.token
+        uni.setStorageSync('token', data.token)
+
+        // 保存用户信息
+        userInfo.value = data.userInfo
+        uni.setStorageSync('userInfo', data.userInfo)
+
+        // 保存用户类型
+        if (data.userInfo && data.userInfo.userType) {
+          userType.value = data.userInfo.userType
+          uni.setStorageSync('userType', data.userInfo.userType)
+        }
+
+        console.log('登录成功', data)
+        return data
+      } else {
+        throw new Error(result.result.msg || '登录失败')
+      }
     } catch (e) {
+      uni.hideLoading()
       console.error('登录失败:', e)
       uni.showToast({
-        title: '登录失败',
+        title: e.message || '登录失败，请重试',
         icon: 'none'
       })
+      throw e
     }
   }
 

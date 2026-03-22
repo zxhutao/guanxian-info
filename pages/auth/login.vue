@@ -12,7 +12,7 @@
         <text class="btn-text">微信授权登录</text>
       </button>
 
-      <button class="login-btn phone" @click="showPhoneLogin = true">
+      <button class="login-btn phone" @click="handlePhoneLogin">
         <text class="btn-icon">📱</text>
         <text class="btn-text">手机号登录</text>
       </button>
@@ -40,20 +40,37 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useUserStore } from '@/stores/user'
 
+const userStore = useUserStore()
 const showPhoneLogin = ref(false)
 
-const handleWechatLogin = () => {
-  uni.showLoading({ title: '登录中...' })
-  
-  // 模拟微信登录
-  setTimeout(() => {
-    uni.hideLoading()
-    uni.showToast({ title: '登录成功', icon: 'success' })
+// 微信登录
+const handleWechatLogin = async () => {
+  try {
+    await userStore.login()
+
+    uni.showToast({
+      title: '登录成功',
+      icon: 'success'
+    })
+
+    // 延迟返回上一页
     setTimeout(() => {
       uni.navigateBack()
     }, 1500)
-  }, 1500)
+  } catch (e) {
+    // 登录失败已由 store 处理
+    console.error('登录失败:', e)
+  }
+}
+
+// 手机号登录（暂未实现）
+const handlePhoneLogin = () => {
+  uni.showToast({
+    title: '手机号登录暂未开放',
+    icon: 'none'
+  })
 }
 </script>
 
