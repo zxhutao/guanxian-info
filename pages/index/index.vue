@@ -176,12 +176,14 @@ const hotJobs = ref([
 
 // 生活服务
 const services = ref([
-  { name: '家政保洁', icon: '🧹' },
-  { name: '家电维修', icon: '🔧' },
-  { name: '开锁疏通', icon: '🔑' },
-  { name: '搬家货运', icon: '📦' },
-  { name: '餐饮外卖', icon: '🍜' },
-  { name: '婚庆摄影', icon: '🎥' }
+  { name: '家政保洁', icon: '🧹', category: 'housekeeping' },
+  { name: '家电维修', icon: '🔧', category: 'appliance' },
+  { name: '开锁疏通', icon: '🔑', category: 'locksmith' },
+  { name: '搬家货运', icon: '🚚', category: 'moving' },
+  { name: '餐饮外卖', icon: '🍔', category: 'food' },
+  { name: '婚庆摄影', icon: '📷', category: 'photo' },
+  { name: '装修建材', icon: '🏠', category: 'renovation' },
+  { name: '汽车服务', icon: '🚗', category: 'car' }
 ])
 
 // 护工推荐 - 静态数据
@@ -219,7 +221,7 @@ const toJobList = () => uni.switchTab({ url: '/pages/job/list' })
 const toJobDetail = (id) => uni.navigateTo({ url: `/pages/job/detail?id=${id}` })
 const toServiceList = () => uni.switchTab({ url: '/pages/service/index' })
 const toServiceDetail = (service) => {
-  uni.navigateTo({ url: `/pages/service/detail?name=${encodeURIComponent(service.name)}` })
+  uni.navigateTo({ url: `/pages/service/detail?category=${service.category}` })
 }
 const toNursingList = () => uni.switchTab({ url: '/pages/nursing/index' })
 const toCaregiverDetail = (id) => uni.navigateTo({ url: `/pages/nursing/detail?id=${id}` })
@@ -482,8 +484,8 @@ const toCaregiverDetail = (id) => uni.navigateTo({ url: `/pages/nursing/detail?i
 
 .service-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20rpx;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16rpx;
   background: #fff;
   padding: 24rpx;
   border-radius: 16rpx;
@@ -492,22 +494,23 @@ const toCaregiverDetail = (id) => uni.navigateTo({ url: `/pages/nursing/detail?i
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12rpx;
+    gap: 8rpx;
 
     .service-icon {
-      width: 100rpx;
-      height: 100rpx;
+      width: 80rpx;
+      height: 80rpx;
       background: #F5F5F5;
-      border-radius: 20rpx;
+      border-radius: 16rpx;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 48rpx;
+      font-size: 40rpx;
     }
 
     .service-name {
-      font-size: 24rpx;
+      font-size: 22rpx;
       color: #333;
+      text-align: center;
     }
   }
 }
