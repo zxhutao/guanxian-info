@@ -1,0 +1,50 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/job/list",
+    "pages/job/detail",
+    "pages/service/index",
+    "pages/service/detail",
+    "pages/nursing/index",
+    "pages/nursing/detail",
+    "pages/info/index",
+    "pages/user/index",
+    "pages/auth/login"
+  ],
+  "window": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "冠帮帮",
+    "navigationBarBackgroundColor": "#FFFFFF",
+    "backgroundColor": "#F5F5F5"
+  },
+  "tabBar": {
+    "color": "#999999",
+    "selectedColor": "#E63946",
+    "backgroundColor": "#FFFFFF",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/job/list",
+        "text": "招聘"
+      },
+      {
+        "pagePath": "pages/service/index",
+        "text": "服务"
+      },
+      {
+        "pagePath": "pages/nursing/index",
+        "text": "养老"
+      },
+      {
+        "pagePath": "pages/user/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2",
+  "lazyCodeLoad": true
+}

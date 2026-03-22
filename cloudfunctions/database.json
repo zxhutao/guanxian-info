@@ -1,0 +1,61 @@
+{
+  "collectionName": "jobs",
+  "description": "职位信息表",
+  "fields": [
+    {
+      "fieldPath": "title",
+      "type": "string",
+      "description": "职位名称"
+    },
+    {
+      "fieldPath": "company",
+      "type": "string",
+      "description": "公司名称"
+    },
+    {
+      "fieldPath": "salary",
+      "type": "string",
+      "description": "薪资范围"
+    },
+    {
+      "fieldPath": "location",
+      "type": "string",
+      "description": "工作地点"
+    },
+    {
+      "fieldPath": "description",
+      "type": "string",
+      "description": "职位描述"
+    },
+    {
+      "fieldPath": "tags",
+      "type": "array",
+      "description": "标签"
+    },
+    {
+      "fieldPath": "category",
+      "type": "string",
+      "description": "职位类别"
+    },
+    {
+      "fieldPath": "status",
+      "type": "number",
+      "description": "状态 0-下架 1-发布"
+    },
+    {
+      "fieldPath": "publisherId",
+      "type": "string",
+      "description": "发布者ID"
+    },
+    {
+      "fieldPath": "createTime",
+      "type": "timestamp",
+      "description": "创建时间"
+    },
+    {
+      "fieldPath": "updateTime",
+      "type": "timestamp",
+      "description": "更新时间"
+    }
+  ]
+}
