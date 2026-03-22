@@ -284,15 +284,22 @@ const contactProvider = () => {
 
 const toggleFavorite = () => {
   isFavorite.value = !isFavorite.value
-  uni.showToast({
-    title: isFavorite.value ? '收藏成功' : '取消收藏',
-    icon: 'success'
+  uni.showModal({
+    title: '提示',
+    content: isFavorite.value ? '已成功收藏该服务商' : '已取消收藏',
+    showCancel: false,
+    confirmText: '知道了'
   })
 }
 
 const shareService = () => {
   try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
-  uni.showToast({ title: '点击右上角分享', icon: 'none' })
+  uni.showModal({
+    title: '分享',
+    content: '请点击右上角「···」进行分享',
+    showCancel: false,
+    confirmText: '知道了'
+  })
 }
 
 const bookService = () => {
@@ -546,12 +553,13 @@ onShareTimeline(() => ({
   bottom: 0;
   left: 0;
   right: 0;
+  z-index: 999;
   display: flex;
   align-items: center;
   padding: 20rpx 30rpx;
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   background: #fff;
-  box-shadow: 0 -4rpx 20rpx rgba(0,0,0,0.05);
+  box-shadow: 0 -4rpx 20rpx rgba(0,0,0,0.08);
   
   .action-icons {
     display: flex;
@@ -562,6 +570,7 @@ onShareTimeline(() => ({
       flex-direction: column;
       align-items: center;
       gap: 6rpx;
+      padding: 10rpx 20rpx;
       
       .icon-circle {
         width: 56rpx;
@@ -571,7 +580,7 @@ onShareTimeline(() => ({
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 28rpx;
+        font-size: 32rpx;
         color: #666;
         
         &.active {
