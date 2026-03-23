@@ -96,8 +96,13 @@
           <text class="icon-text">分享</text>
         </view>
       </view>
-      <view class="book-btn" @click="bookService">
-        <text>立即预约</text>
+      <view class="action-btns">
+        <view class="review-btn" @click="goToReview">
+          <text>写评价</text>
+        </view>
+        <view class="book-btn" @click="bookService">
+          <text>立即预约</text>
+        </view>
       </view>
     </view>
   </view>
@@ -105,16 +110,58 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 
 const category = ref('')
+const serviceId = ref('')
 const selectedItem = ref(0)
 const isFavorite = ref(false)
 
+// 收藏存储键名
+const getFavoriteKey = () => `favorite_service_${serviceId.value || category.value}`
+
 onLoad((options) => {
   category.value = options.category || 'housekeeping'
+  serviceId.value = options.id || ''
   loadServiceInfo()
+  loadFavoriteStatus()
 })
+
+// 加载收藏状态
+const loadFavoriteStatus = () => {
+  try {
+    const favorites = uni.getStorageSync('service_favorites') || {}
+    isFavorite.value = !!favorites[getFavoriteKey()]
+  } catch (e) {
+    isFavorite.value = false
+  }
+}
+
+// 切换收藏
+const toggleFavorite = () => {
+  isFavorite.value = !isFavorite.value
+  
+  try {
+    const favorites = uni.getStorageSync('service_favorites') || {}
+    favorites[getFavoriteKey()] = isFavorite.value
+    uni.setStorageSync('service_favorites', favorites)
+  } catch (e) {
+    console.error('收藏存储失败', e)
+  }
+  
+  uni.showToast({
+    title: isFavorite.value ? '已收藏' : '已取消收藏',
+    icon: 'none',
+    duration: 1500
+  })
+}
+
+// 分享功能 - 点击直接触发微信分享菜单
+const shareService = () => {
+  // 微信小程序会自动调用 onShareAppMessage 和 onShareTimeline
+  // 这里返回 false 阻止默认行为，让小程序显示分享菜单
+  return
+}
 
 const categoryName = computed(() => {
   const names = {
@@ -282,26 +329,6 @@ const contactProvider = () => {
   })
 }
 
-const toggleFavorite = () => {
-  isFavorite.value = !isFavorite.value
-  uni.showModal({
-    title: '提示',
-    content: isFavorite.value ? '已成功收藏该服务商' : '已取消收藏',
-    showCancel: false,
-    confirmText: '知道了'
-  })
-}
-
-const shareService = () => {
-  try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
-  uni.showModal({
-    title: '分享',
-    content: '请点击右上角「···」进行分享',
-    showCancel: false,
-    confirmText: '知道了'
-  })
-}
-
 const bookService = () => {
   uni.showModal({
     title: '预约服务',
@@ -315,17 +342,22 @@ const bookService = () => {
   })
 }
 
-// 分享配置
-onShareAppMessage(() => ({
-  title: `${serviceInfo.value.name} - ${categoryName.value}`,
-  path: `/pages/service/detail?category=${category.value}`,
-  imageUrl: serviceInfo.value.image
-}))
+// 分享给好友
+onShareAppMessage(() => {
+  return {
+    title: `${serviceInfo.value.name} - ${categoryName.value}`,
+    path: `/pages/service/detail?id=${serviceId.value}&category=${category.value}`,
+    imageUrl: serviceInfo.value.avatar
+  }
+})
 
-onShareTimeline(() => ({
-  title: `${serviceInfo.value.name}`,
-  query: `category=${category.value}`
-}))
+// 分享到朋友圈
+onShareTimeline(() => {
+  return {
+    title: `${serviceInfo.value.name} - 冠县${categoryName.value}服务`,
+    query: `id=${serviceId.value}&category=${category.value}`
+  }
+})
 </script>
 
 <style lang="scss" scoped>
@@ -563,24 +595,24 @@ onShareTimeline(() => ({
   
   .action-icons {
     display: flex;
-    gap: 50rpx;
+    gap: 40rpx;
     
     .action-icon {
       display: flex;
       flex-direction: column;
       align-items: center;
       gap: 6rpx;
-      padding: 10rpx 20rpx;
+      padding: 10rpx 16rpx;
       
       .icon-circle {
-        width: 56rpx;
-        height: 56rpx;
+        width: 52rpx;
+        height: 52rpx;
         background: #f5f5f5;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 32rpx;
+        font-size: 28rpx;
         color: #666;
         
         &.active {
@@ -590,22 +622,40 @@ onShareTimeline(() => ({
       }
       
       .icon-text {
-        font-size: 22rpx;
+        font-size: 20rpx;
         color: #666;
       }
     }
   }
   
-  .book-btn {
+  .action-btns {
     flex: 1;
-    margin-left: 40rpx;
-    background: linear-gradient(135deg, #E63946, #FF6B6B);
-    color: #fff;
-    text-align: center;
-    padding: 24rpx 0;
-    border-radius: 40rpx;
-    font-size: 30rpx;
-    font-weight: 600;
+    display: flex;
+    gap: 16rpx;
+    margin-left: 20rpx;
+    
+    .review-btn {
+      flex: 1;
+      background: #FFF5F5;
+      color: #E63946;
+      text-align: center;
+      padding: 22rpx 0;
+      border-radius: 40rpx;
+      font-size: 28rpx;
+      font-weight: 600;
+      border: 2rpx solid #E63946;
+    }
+    
+    .book-btn {
+      flex: 1.2;
+      background: linear-gradient(135deg, #E63946, #FF6B6B);
+      color: #fff;
+      text-align: center;
+      padding: 24rpx 0;
+      border-radius: 40rpx;
+      font-size: 28rpx;
+      font-weight: 600;
+    }
   }
 }
 </style>

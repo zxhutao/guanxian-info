@@ -16,6 +16,112 @@
       </view>
     </scroll-view>
 
+    <!-- 筛选和排序栏 -->
+    <view class="filter-bar">
+      <view class="filter-left">
+        <text class="current-category">{{ categories[currentCategory].name }}</text>
+      </view>
+      <view class="filter-right">
+        <view class="filter-btn" @click="toggleFilter">
+          <text class="filter-icon">🔍</text>
+          <text>筛选</text>
+          <text class="filter-indicator" v-if="hasActiveFilter">●</text>
+        </view>
+        <view class="sort-btn" @click="toggleSort">
+          <text>{{ sortOptions[currentSort].label }}</text>
+          <text class="sort-arrow" :class="{ active: showSort }">▼</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 筛选弹窗 -->
+    <view class="filter-popup" v-if="showFilter" @click.self="closeFilter">
+      <view class="filter-content">
+        <view class="filter-header">
+          <text class="filter-title">筛选条件</text>
+          <text class="filter-reset" @click="resetFilter">重置</text>
+        </view>
+        
+        <!-- 排序方式 -->
+        <view class="filter-section">
+          <text class="filter-section-title">排序方式</text>
+          <view class="filter-tags">
+            <view 
+              v-for="(option, index) in sortOptions" 
+              :key="index"
+              class="filter-tag"
+              :class="{ active: filterSort === index }"
+              @click="filterSort = index"
+            >
+              {{ option.label }}
+            </view>
+          </view>
+        </view>
+        
+        <!-- 认证筛选 -->
+        <view class="filter-section">
+          <text class="filter-section-title">服务商筛选</text>
+          <view class="filter-tags">
+            <view 
+              class="filter-tag"
+              :class="{ active: filterVerified === null }"
+              @click="filterVerified = null"
+            >
+              全部
+            </view>
+            <view 
+              class="filter-tag"
+              :class="{ active: filterVerified === true }"
+              @click="filterVerified = true"
+            >
+              已认证
+            </view>
+          </view>
+        </view>
+        
+        <!-- 价格区间 -->
+        <view class="filter-section">
+          <text class="filter-section-title">价格区间</text>
+          <view class="filter-tags">
+            <view 
+              class="filter-tag"
+              :class="{ active: filterPrice === 'all' }"
+              @click="filterPrice = 'all'"
+            >
+              全部
+            </view>
+            <view 
+              class="filter-tag"
+              :class="{ active: filterPrice === 'low' }"
+              @click="filterPrice = 'low'"
+            >
+              100元以下
+            </view>
+            <view 
+              class="filter-tag"
+              :class="{ active: filterPrice === 'mid' }"
+              @click="filterPrice = 'mid'"
+            >
+              100-500元
+            </view>
+            <view 
+              class="filter-tag"
+              :class="{ active: filterPrice === 'high' }"
+              @click="filterPrice = 'high'"
+            >
+              500元以上
+            </view>
+          </view>
+        </view>
+        
+        <!-- 确认按钮 -->
+        <view class="filter-footer">
+          <view class="filter-cancel" @click="closeFilter">取消</view>
+          <view class="filter-confirm" @click="applyFilter">确定</view>
+        </view>
+      </view>
+    </view>
+
     <!-- 服务列表 -->
     <scroll-view scroll-y class="service-list" @scrolltolower="loadMore">
       <view class="list-header">
@@ -62,6 +168,22 @@
         <text class="empty-hint">稍后再来看看吧</text>
       </view>
     </scroll-view>
+
+    <!-- 排序弹窗 -->
+    <view class="sort-popup" v-if="showSort" @click.self="showSort = false">
+      <view class="sort-content">
+        <view 
+          v-for="(option, index) in sortOptions" 
+          :key="index"
+          class="sort-item"
+          :class="{ active: currentSort === index }"
+          @click="selectSort(index)"
+        >
+          <text>{{ option.label }}</text>
+          <text class="check-icon" v-if="currentSort === index">✓</text>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -69,6 +191,67 @@
 import { ref, computed, onMounted } from 'vue'
 
 const currentCategory = ref(0)
+
+// 排序选项
+const sortOptions = [
+  { label: '默认排序', value: 'default' },
+  { label: '好评优先', value: 'rating' },
+  { label: '订单最多', value: 'orders' },
+  { label: '价格最低', value: 'price_low' },
+  { label: '价格最高', value: 'price_high' }
+]
+
+const currentSort = ref(0)
+
+// 筛选状态
+const showFilter = ref(false)
+const showSort = ref(false)
+const filterSort = ref(0)
+const filterVerified = ref(null)
+const filterPrice = ref('all')
+
+// 是否有激活的筛选条件
+const hasActiveFilter = computed(() => {
+  return filterSort.value !== 0 || filterVerified.value !== null || filterPrice.value !== 'all'
+})
+
+// 切换筛选弹窗
+const toggleFilter = () => {
+  showFilter.value = !showFilter.value
+  showSort.value = false
+}
+
+const closeFilter = () => {
+  showFilter.value = false
+}
+
+// 重置筛选条件
+const resetFilter = () => {
+  filterSort.value = 0
+  filterVerified.value = null
+  filterPrice.value = 'all'
+}
+
+// 应用筛选
+const applyFilter = () => {
+  currentSort.value = filterSort.value
+  showFilter.value = false
+}
+
+// 切换排序弹窗
+const toggleSort = () => {
+  showSort.value = !showSort.value
+  showFilter.value = false
+  if (showSort.value) {
+    filterSort.value = currentSort.value
+  }
+}
+
+// 选择排序方式
+const selectSort = (index) => {
+  currentSort.value = index
+  showSort.value = false
+}
 
 const categories = [
   { icon: '🧹', name: '家政保洁', type: 'housekeeping' },
@@ -118,7 +301,52 @@ onMounted(() => {
 
 const filteredServices = computed(() => {
   const type = categories[currentCategory.value].type
-  return allServices.value.filter(s => s.category === type)
+  let result = allServices.value.filter(s => s.category === type)
+  
+  // 认证筛选
+  if (filterVerified.value !== null) {
+    result = result.filter(s => s.isVerified === filterVerified.value)
+  }
+  
+  // 价格筛选
+  if (filterPrice.value !== 'all') {
+    result = result.filter(s => {
+      const priceMatch = s.price.match(/(\d+)/)
+      if (!priceMatch) return false
+      const price = parseInt(priceMatch[1])
+      if (filterPrice.value === 'low') return price < 100
+      if (filterPrice.value === 'mid') return price >= 100 && price <= 500
+      if (filterPrice.value === 'high') return price > 500
+      return true
+    })
+  }
+  
+  // 排序
+  const sortType = sortOptions[currentSort.value].value
+  switch (sortType) {
+    case 'rating':
+      result.sort((a, b) => b.rating - a.rating)
+      break
+    case 'orders':
+      result.sort((a, b) => b.orderCount - a.orderCount)
+      break
+    case 'price_low':
+      result.sort((a, b) => {
+        const priceA = parseInt(a.price.match(/\d+/)?.[0] || '999999')
+        const priceB = parseInt(b.price.match(/\d+/)?.[0] || '999999')
+        return priceA - priceB
+      })
+      break
+    case 'price_high':
+      result.sort((a, b) => {
+        const priceA = parseInt(a.price.match(/\d+/)?.[0] || '0')
+        const priceB = parseInt(b.price.match(/\d+/)?.[0] || '0')
+        return priceB - priceA
+      })
+      break
+  }
+  
+  return result
 })
 
 const switchCategory = (index) => {
@@ -337,6 +565,223 @@ const loadMore = () => {
   .empty-hint {
     font-size: 24rpx;
     color: #999;
+  }
+}
+
+// 筛选栏
+.filter-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16rpx 24rpx;
+  background: #fff;
+  border-bottom: 1rpx solid #eee;
+
+  .filter-left {
+    .current-category {
+      font-size: 28rpx;
+      font-weight: 600;
+      color: #333;
+    }
+  }
+
+  .filter-right {
+    display: flex;
+    align-items: center;
+    gap: 24rpx;
+
+    .filter-btn {
+      display: flex;
+      align-items: center;
+      gap: 8rpx;
+      padding: 8rpx 20rpx;
+      background: #f5f5f5;
+      border-radius: 30rpx;
+      font-size: 24rpx;
+      color: #666;
+      position: relative;
+
+      .filter-icon {
+        font-size: 24rpx;
+      }
+
+      .filter-indicator {
+        position: absolute;
+        top: 4rpx;
+        right: 4rpx;
+        color: #E63946;
+        font-size: 16rpx;
+      }
+    }
+
+    .sort-btn {
+      display: flex;
+      align-items: center;
+      gap: 8rpx;
+      padding: 8rpx 20rpx;
+      background: #f5f5f5;
+      border-radius: 30rpx;
+      font-size: 24rpx;
+      color: #666;
+
+      .sort-arrow {
+        font-size: 18rpx;
+        transition: transform 0.3s;
+
+        &.active {
+          transform: rotate(180deg);
+        }
+      }
+    }
+  }
+}
+
+// 筛选弹窗
+.filter-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+
+  .filter-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border-radius: 24rpx 24rpx 0 0;
+    padding: 24rpx;
+    max-height: 70vh;
+    overflow-y: auto;
+
+    .filter-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24rpx;
+
+      .filter-title {
+        font-size: 32rpx;
+        font-weight: 600;
+        color: #333;
+      }
+
+      .filter-reset {
+        font-size: 26rpx;
+        color: #E63946;
+      }
+    }
+
+    .filter-section {
+      margin-bottom: 32rpx;
+
+      .filter-section-title {
+        display: block;
+        font-size: 28rpx;
+        color: #333;
+        margin-bottom: 16rpx;
+        font-weight: 500;
+      }
+
+      .filter-tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16rpx;
+
+        .filter-tag {
+          padding: 12rpx 28rpx;
+          background: #f5f5f5;
+          border-radius: 30rpx;
+          font-size: 26rpx;
+          color: #666;
+          border: 2rpx solid transparent;
+          transition: all 0.2s;
+
+          &.active {
+            background: rgba(230, 57, 70, 0.1);
+            color: #E63946;
+            border-color: #E63946;
+          }
+        }
+      }
+    }
+
+    .filter-footer {
+      display: flex;
+      gap: 24rpx;
+      margin-top: 32rpx;
+      padding-top: 24rpx;
+      border-top: 1rpx solid #eee;
+
+      .filter-cancel,
+      .filter-confirm {
+        flex: 1;
+        height: 88rpx;
+        line-height: 88rpx;
+        text-align: center;
+        border-radius: 44rpx;
+        font-size: 30rpx;
+      }
+
+      .filter-cancel {
+        background: #f5f5f5;
+        color: #666;
+      }
+
+      .filter-confirm {
+        background: linear-gradient(135deg, #E63946, #FF6B6B);
+        color: #fff;
+      }
+    }
+  }
+}
+
+// 排序弹窗
+.sort-popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+
+  .sort-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 16rpx;
+    width: 400rpx;
+    overflow: hidden;
+
+    .sort-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 28rpx 32rpx;
+      font-size: 28rpx;
+      color: #333;
+      border-bottom: 1rpx solid #f5f5f5;
+
+      &:last-child {
+        border-bottom: none;
+      }
+
+      &.active {
+        color: #E63946;
+        background: rgba(230, 57, 70, 0.05);
+      }
+
+      .check-icon {
+        color: #E63946;
+        font-size: 28rpx;
+      }
+    }
   }
 }
 </style>

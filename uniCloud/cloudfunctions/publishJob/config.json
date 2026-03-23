@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "openapi": ["database.add"]
+  },
+  "desc": "发布职位云函数"
+}

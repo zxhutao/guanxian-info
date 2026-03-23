@@ -1,0 +1,89 @@
+{
+  "collections": [
+    {
+      "collectionName": "reviews",
+      "description": "用户评价表",
+      "fields": [
+        {
+          "fieldPath": "providerId",
+          "type": "string",
+          "description": "服务商/护工ID"
+        },
+        {
+          "fieldPath": "providerType",
+          "type": "string",
+          "description": "类型：service-服务 worker-护工"
+        },
+        {
+          "fieldPath": "orderId",
+          "type": "string",
+          "description": "关联订单ID（可选）"
+        },
+        {
+          "fieldPath": "userId",
+          "type": "string",
+          "description": "用户openid"
+        },
+        {
+          "fieldPath": "rating",
+          "type": "number",
+          "description": "评分 1-5星"
+        },
+        {
+          "fieldPath": "content",
+          "type": "string",
+          "description": "评价内容"
+        },
+        {
+          "fieldPath": "tags",
+          "type": "array",
+          "description": "评价标签数组"
+        },
+        {
+          "fieldPath": "images",
+          "type": "array",
+          "description": "评价图片数组"
+        },
+        {
+          "fieldPath": "isVisible",
+          "type": "boolean",
+          "description": "是否显示"
+        },
+        {
+          "fieldPath": "likeCount",
+          "type": "number",
+          "description": "点赞数"
+        },
+        {
+          "fieldPath": "reply",
+          "type": "object",
+          "description": "商家回复"
+        },
+        {
+          "fieldPath": "createTime",
+          "type": "timestamp",
+          "description": "创建时间"
+        },
+        {
+          "fieldPath": "updateTime",
+          "type": "timestamp",
+          "description": "更新时间"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "providerId_index",
+          "fields": ["providerId"]
+        },
+        {
+          "name": "userId_index",
+          "fields": ["userId"]
+        },
+        {
+          "name": "createTime_index",
+          "fields": ["createTime"]
+        }
+      ]
+    }
+  ]
+}

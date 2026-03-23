@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "openapi": ["database.query"]
+  },
+  "desc": "获取护工列表"
+}

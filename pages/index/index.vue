@@ -197,9 +197,11 @@ const quickEntries = [
   { icon: '💼', label: '找工作', path: '/pages/job/list', color: '#E63946' },
   { icon: '🔧', label: '生活服务', path: '/pages/service/index', color: '#FF6B35' },
   { icon: '👴', label: '养老护理', path: '/pages/nursing/index', color: '#4CAF50' },
-  { icon: '🏠', label: '房屋租售', path: '/pages/house/list', color: '#2196F3' },
-  { icon: '🚗', label: '顺风车', path: '/pages/carpool/list', color: '#9C27B0' },
-  { icon: '📰', label: '本地资讯', path: '/pages/info/index', color: '#FF9800' }
+  { icon: '❓', label: '本地问答', path: '/pages/qa/index', color: '#9C27B0' },
+  { icon: '📞', label: '114电话', path: '/pages/phonebook/index', color: '#07C160' },
+  { icon: '🏆', label: '好评榜', path: '/pages/ranking/index', color: '#FFD700' },
+  { icon: '📅', label: '每日签到', path: '/pages/checkin/index', color: '#FF9800' },
+  { icon: '🎁', label: '积分商城', path: '/pages/points/shop', color: '#E91E63' }
 ]
 
 // 跳转搜索

@@ -1,0 +1,8 @@
+{
+  "name": "initServices",
+  "version": "1.0.0",
+  "description": "初始化服务和护工示例数据",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

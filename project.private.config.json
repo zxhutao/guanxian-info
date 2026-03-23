@@ -1,21 +1,7 @@
 {
-  "libVersion": "3.15.0",
-  "projectname": "%E5%86%A0%E5%8E%BF%E4%BF%A1%E6%81%AF%E6%B8%AF",
   "setting": {
     "urlCheck": false,
-    "coverView": true,
-    "lazyloadPlaceholderEnable": false,
-    "skylineRenderEnable": false,
-    "preloadBackgroundData": false,
-    "autoAudits": false,
-    "showShadowRootInWxmlPanel": true,
-    "compileHotReLoad": true,
-    "useApiHook": true,
-    "useStaticServer": false,
-    "useLanDebug": false,
-    "showES6CompileOption": false,
-    "checkInvalidKey": true,
-    "ignoreDevUnusedFiles": true,
-    "bigPackageSizeSupport": false
-  }
+    "bigPackageSizeSupport": true
+  },
+  "cloudfunctionRoot": "cloudfunctions/"
 }

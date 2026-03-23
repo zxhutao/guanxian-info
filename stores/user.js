@@ -31,16 +31,39 @@ export const useUserStore = defineStore('user', () => {
         throw new Error('获取登录凭证失败')
       }
 
-      // 调用云函数登录
-      const result = await uniCloud.callFunction({
-        name: 'login',
-        data: { code: loginRes.code }
-      })
+      // 调用微信云函数登录
+      console.log('开始调用云函数，code:', loginRes.code)
+      let callRes
+      try {
+        callRes = await wx.cloud.callFunction({
+          name: 'login',
+          data: { code: loginRes.code }
+        })
+      } catch (cloudErr) {
+        console.error('云函数调用失败:', cloudErr)
+        throw new Error('云函数调用失败: ' + (cloudErr.message || JSON.stringify(cloudErr)))
+      }
+      
+      console.log('云函数返回:', JSON.stringify(callRes))
+      
+      const result = callRes.result
+      
+      if (!result) {
+        console.error('云函数返回结果为空')
+        throw new Error('云函数返回结果为空')
+      }
+      
+      console.log('云函数result:', JSON.stringify(result))
 
       uni.hideLoading()
 
-      if (result.success && result.result.success) {
-        const data = result.result.data
+      if (result.success) {
+        const data = result.data
+        
+        if (!data || !data.token) {
+          console.error('返回数据缺少token:', data)
+          throw new Error('登录返回数据不完整')
+        }
 
         // 保存 token
         token.value = data.token
@@ -59,7 +82,8 @@ export const useUserStore = defineStore('user', () => {
         console.log('登录成功', data)
         return data
       } else {
-        throw new Error(result.result.msg || '登录失败')
+        console.error('云函数返回失败:', result)
+        throw new Error(result.msg || result.errMsg || '登录失败')
       }
     } catch (e) {
       uni.hideLoading()

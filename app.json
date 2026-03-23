@@ -11,6 +11,8 @@
     "pages/user/index",
     "pages/auth/login"
   ],
+  "cloudfunctionRoot": "cloudfunctions/",
+  "miniprogramRoot": "",
   "window": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "冠帮帮",

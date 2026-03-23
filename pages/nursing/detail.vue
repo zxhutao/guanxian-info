@@ -237,11 +237,11 @@ const handleShare = () => {
   try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
 }
 
-const bookCaregiver = async () => {
-  const confirmed = await showConfirm('预约确认', `确定预约${caregiver.value.name}吗？`)
-  if (confirmed) {
-    uni.showToast({ title: '预约成功，请等待电话确认', icon: 'success' })
-  }
+const bookCaregiver = () => {
+  // 跳转到下单页面
+  uni.navigateTo({
+    url: `/pages/nursing/order?id=${caregiverId.value}&name=${encodeURIComponent(caregiver.value.name)}&price=${caregiver.value.price}&avatar=${encodeURIComponent(caregiver.value.avatar)}`
+  })
 }
 
 const callPhone = () => {

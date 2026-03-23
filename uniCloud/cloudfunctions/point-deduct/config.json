@@ -1,0 +1,12 @@
+{
+  "name": "point-deduct",
+  "version": "1.0.0",
+  "description": "积分抵现云函数",
+  "main": "index.js",
+  "cloudfunctionConfig": {
+    "memorySize": 128,
+    "timeout": 5,
+    "triggers": [],
+    "envVariables": {}
+  }
+}
