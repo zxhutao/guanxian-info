@@ -1,6 +1,0 @@
-{
-  "permissions": {
-    "openapi": ["database.query", "database.update"]
-  },
-  "desc": "获取职位列表云函数"
-}

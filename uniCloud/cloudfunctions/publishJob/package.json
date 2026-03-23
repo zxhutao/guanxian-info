@@ -1,8 +1,0 @@
-{
-  "name": "publishJob",
-  "version": "1.0.0",
-  "description": "发布职位云函数",
-  "dependencies": {
-    "wx-server-sdk": "~2.6.3"
-  }
-}

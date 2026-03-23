@@ -203,7 +203,7 @@ const getUserPoints = async () => {
 // 页面跳转
 const goToPage = (url) => {
   if (!isLogin.value && url !== '/pages/user/about') {
-    uni.navigateTo({ url: '/pages/login/index' })
+    uni.navigateTo({ url: '/pages/auth/login' })
     return
   }
   uni.navigateTo({ url })
@@ -212,7 +212,7 @@ const goToPage = (url) => {
 // 登录
 const goLogin = () => {
   if (!isLogin.value) {
-    uni.navigateTo({ url: '/pages/login/index' })
+    uni.navigateTo({ url: '/pages/auth/login' })
   }
 }
 

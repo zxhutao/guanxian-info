@@ -1,6 +1,0 @@
-{
-  "permissions": {
-    "openapi": ["database.query", "database.add"]
-  },
-  "desc": "初始化服务数据"
-}

@@ -1,8 +1,0 @@
-{
-  "name": "jobList",
-  "version": "1.0.0",
-  "description": "获取职位列表云函数",
-  "dependencies": {
-    "wx-server-sdk": "~2.6.3"
-  }
-}

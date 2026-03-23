@@ -1,6 +1,0 @@
-{
-  "permissions": {
-    "openapi": ["database.query"]
-  },
-  "desc": "获取服务列表"
-}
