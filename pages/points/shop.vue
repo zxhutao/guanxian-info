@@ -327,7 +327,10 @@ const goGoodsDetail = (item) => {
         font-size: 28rpx;
         font-weight: 600;
         color: #333;
-        @include text-ellipsis(2);
+        display: -webkit-box;
+-webkit-box-orient: vertical;
+-webkit-line-clamp: 2;
+overflow: hidden;
         line-height: 1.4;
         min-height: 78rpx;
       }
