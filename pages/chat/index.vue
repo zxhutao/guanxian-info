@@ -285,7 +285,7 @@ const sendTextMessage = async () => {
     })
     // #endif
   } catch (e) {
-    console.error('发送消息失?, e)
+    console.error('发送消息失败', e)
   }
 }
 
