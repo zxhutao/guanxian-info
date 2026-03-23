@@ -123,7 +123,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { showConfirm } from '@/utils/index'
+import { showConfirm } from '../../utils/index'
 
 const currentTab = ref('job')
 

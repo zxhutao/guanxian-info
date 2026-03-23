@@ -112,7 +112,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import PointDeduct from '@/components/point-deduct/point-deduct.vue'
+import PointDeduct from '../../components/point-deduct/point-deduct.vue'
 
 // 服务信息
 const serviceInfo = ref({

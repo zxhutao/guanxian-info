@@ -93,7 +93,7 @@
 
 <script setup>
 import { ref, watch, computed } from 'vue'
-import { phoneCategories, phonebookData, searchPhones } from '@/data/phonebook.js'
+import { phoneCategories, phonebookData, searchPhones } from '../../data/phonebook.js'
 
 // 搜索关键词
 const keyword = ref('')

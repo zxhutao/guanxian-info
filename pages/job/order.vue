@@ -92,7 +92,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import PointDeduct from '@/components/point-deduct/point-deduct.vue'
+import PointDeduct from '../../components/point-deduct/point-deduct.vue'
 
 // 置顶时长选项
 const durations = [

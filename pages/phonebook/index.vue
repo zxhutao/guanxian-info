@@ -88,7 +88,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { phoneCategories, phonebookData, getPhonesByCategory } from '@/data/phonebook.js'
+import { phoneCategories, phonebookData, getPhonesByCategory } from '../../data/phonebook.js'
 
 // 分类列表
 const categories = phoneCategories

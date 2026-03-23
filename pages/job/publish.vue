@@ -91,7 +91,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { callCloudFunction, CLOUD_FUNCTIONS } from '@/utils/cloud.js'
+import { callCloudFunction, CLOUD_FUNCTIONS } from '../../utils/cloud.js'
 
 // 表单数据
 const form = ref({

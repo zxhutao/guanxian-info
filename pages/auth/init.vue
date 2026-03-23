@@ -58,7 +58,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { callCloudFunction, CLOUD_FUNCTIONS } from '@/utils/cloud.js'
+import { callCloudFunction, CLOUD_FUNCTIONS } from '../../utils/cloud.js'
 
 const loading = ref(false)
 const jobDone = ref(false)

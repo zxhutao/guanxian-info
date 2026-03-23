@@ -6,7 +6,7 @@
 
 <script setup>
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
-import { useUserStore } from '@/stores/user'
+import { useUserStore } from './stores/user'
 
 // const userStore = useUserStore()
 

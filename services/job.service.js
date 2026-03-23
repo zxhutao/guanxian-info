@@ -1,7 +1,7 @@
 /**
  * 招聘相关 API
  */
-import { get, post, del } from '@/utils/request'
+import { get, post, del } from '../utils/request'
 
 /**
  * 获取职位列表

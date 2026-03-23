@@ -116,7 +116,7 @@
 </template>
 
 <script setup>
-import { makePhoneCall, copyText } from '@/utils/index'
+import { makePhoneCall, copyText } from '../../utils/index'
 
 const callPhone = () => {
   makePhoneCall('06358888888')

@@ -1,7 +1,7 @@
 /**
  * 统一请求封装
  */
-import { useUserStore } from '@/stores/user'
+import { useUserStore } from '../stores/user'
 
 // 开发环境API地址
 const BASE_URL = 'https://api.example.com'

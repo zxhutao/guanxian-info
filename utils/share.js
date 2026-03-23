@@ -1,7 +1,7 @@
 /**
  * 分享工具
  */
-import { useUserStore } from '@/stores/user'
+import { useUserStore } from '../stores/user'
 
 /**
  * 生成分享路径（带推荐人参数）

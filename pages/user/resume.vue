@@ -153,7 +153,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { showConfirm } from '@/utils/index'
+import { showConfirm } from '../../utils/index'
 
 const resume = ref({
   avatar: '',

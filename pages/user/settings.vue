@@ -99,7 +99,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
-import { useUserStore } from '@/stores/user'
+import { useUserStore } from '../../stores/user'
 
 const userStore = useUserStore()
 

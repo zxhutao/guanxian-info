@@ -122,7 +122,7 @@
 <script setup>
 import { ref } from 'vue'
 import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
-import { makePhoneCall, showConfirm } from '@/utils/index'
+import { makePhoneCall, showConfirm } from '../../utils/index'
 
 const caregiverId = ref('')
 const caregiver = ref({

@@ -141,7 +141,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import PointDeduct from '@/components/point-deduct/point-deduct.vue'
+import PointDeduct from '../../components/point-deduct/point-deduct.vue'
 
 // 护工信息
 const workerInfo = ref({
