@@ -137,21 +137,21 @@ onLoad((options) => {
 })
 
 const loadProviderInfo = () => {
-  // 模拟数据，实际应从接口获?
+  // 模拟数据，实际应从接口获取
   const typeMap = {
     'service': '生活服务',
-    'worker': '养老护?
+    'worker': '养老护工'
   }
   
   const nameMap = {
     'housekeeping': '冠县保洁公司',
     'appliance': '冠县家电维修中心',
-    'locksmith': '冠县开锁服务中?,
+    'locksmith': '冠县开锁服务中心',
     'moving': '冠县搬家公司'
   }
   
   providerInfo.value = {
-    name: nameMap[providerId.value] || '冠县服务?,
+    name: nameMap[providerId.value] || '冠县服务商',
     avatar: 'https://img.yzcdn.cn/vant/cat.jpeg',
     type: typeMap[providerType.value] || '生活服务'
   }
@@ -188,13 +188,13 @@ const removeImage = (index) => {
 const submitReview = async () => {
   if (!canSubmit.value) return
   
-  uni.showLoading({ title: '提交?..' })
+  uni.showLoading({ title: '提交中...' })
   
   try {
     // 上传图片到云存储
     const uploadedImages = []
     for (const img of images.value) {
-      const result = await uni.cloud.uploadFile({
+      const result = await uniCloud.uploadFile({
         cloudPath: `reviews/${Date.now()}_${Math.random().toString(36).substr(2)}.jpg`,
         filePath: img
       })

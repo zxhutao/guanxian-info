@@ -18,7 +18,7 @@
         <view class="points-divider"></view>
         <view class="points-item">
           <text class="points-label">连续签到</text>
-          <text class="points-value streak">{{ checkinStreak }}<text class="unit">?/text></text>
+          <text class="points-value streak">{{ checkinStreak }}<text class="unit">天</text></text>
         </view>
       </view>
     </view>
@@ -31,7 +31,7 @@
           :class="{ checked: hasCheckinToday, animating: isAnimating }"
           @click="handleCheckin"
         >
-          <text v-if="hasCheckinToday" class="btn-text">已签?/text>
+          <text v-if="hasCheckinToday" class="btn-text">已签到</text>
           <text v-else class="btn-text">立即签到</text>
           <text v-if="!hasCheckinToday" class="btn-points">+{{ tomorrowPoints }}</text>
         </view>
@@ -50,9 +50,9 @@
           class="reward-item"
           :class="{ active: checkinStreak >= item.days, current: checkinStreak + 1 === item.days && !hasCheckinToday }"
         >
-          <view class="reward-day">{{ item.days }}?/view>
+          <view class="reward-day">{{ item.days }}天</view>
           <view class="reward-points">+{{ item.points }}</view>
-          <view v-if="checkinStreak >= item.days" class="reward-status">?/view>
+          <view v-if="checkinStreak >= item.days" class="reward-status">已完成</view>
           <view v-else-if="checkinStreak + 1 === item.days && !hasCheckinToday" class="reward-status next">明日</view>
         </view>
       </view>
@@ -63,9 +63,9 @@
       <view class="section-header">
         <text class="section-title">签到日历</text>
         <view class="month-selector">
-          <text class="arrow" @click="changeMonth(-1)">?/text>
-          <text class="month-text">{{ currentYear }}年{{ currentMonth }}?/text>
-          <text class="arrow" @click="changeMonth(1)">?/text>
+          <text class="arrow" @click="changeMonth(-1)">&lt;</text>
+          <text class="month-text">{{ currentYear }}年{{ currentMonth }}月</text>
+          <text class="arrow" @click="changeMonth(1)">&gt;</text>
         </view>
       </view>
       <view class="calendar">
@@ -85,7 +85,7 @@
             }"
           >
             <text class="day-number">{{ day.day }}</text>
-            <text v-if="day.hasCheckin" class="check-mark">?/text>
+            <text v-if="day.hasCheckin" class="check-mark">✓</text>
           </view>
         </view>
       </view>
@@ -107,7 +107,7 @@
           <text class="rule-icon">🔥</text>
           <view class="rule-content">
             <text class="rule-title">连续奖励</text>
-            <text class="rule-desc">连续签到7天额外奖?5积分</text>
+            <text class="rule-desc">连续签到7天额外奖励50积分</text>
           </view>
           <text class="rule-points">+15</text>
         </view>
@@ -115,7 +115,7 @@
           <text class="rule-icon">🎯</text>
           <view class="rule-content">
             <text class="rule-title">更多任务</text>
-            <text class="rule-desc">完成订单、邀请好友获得积?/text>
+            <text class="rule-desc">完成订单、邀请好友获得积分</text>
           </view>
           <text class="rule-points">更多</text>
         </view>
