@@ -107,9 +107,9 @@ const providerInfo = ref({
 })
 
 // 好评标签
-const positiveTags = ['服务热情', '技术专?, '准时到达', '价格合理', '态度?, '效率?, '细心耐心', '推荐']
+const positiveTags = ['服务热情', '技术专业', '准时到达', '价格合理', '态度好', '效率高', '细心耐心', '推荐']
 // 差评标签
-const negativeTags = ['服务态度?, '技术不?, '迟到', '乱收?, '不专?, '敷衍了事']
+const negativeTags = ['服务态度差', '技术不好', '迟到', '乱收费', '不专业', '敷衍了事']
 
 // 根据评分显示不同标签
 const currentTags = computed(() => {
@@ -119,7 +119,7 @@ const currentTags = computed(() => {
 })
 
 const ratingText = computed(() => {
-  const texts = ['', '非常不满?- 问题严重，不推荐', '不满?- 问题较多，有待改?, '一?- 还可以，但有改进空间', '满意 - 服务不错，值得推荐', '非常满意 - 超出预期，强烈推荐！']
+  const texts = ['', '非常不满 - 问题严重，不推荐', '不满 - 问题较多，有待改进', '一般 - 还可以，但有改进空间', '满意 - 服务不错，值得推荐', '非常满意 - 超出预期，强烈推荐！']
   return texts[rating.value] || '点击星星评分'
 })
 

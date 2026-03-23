@@ -142,7 +142,7 @@ const isAnimating = ref(false)
 // 日历数据
 const currentYear = ref(new Date().getFullYear())
 const currentMonth = ref(new Date().getMonth() + 1)
-const weekDays = ['?, '一', '?, '?, '?, '?, '?]
+const weekDays = ['日', '一', '二', '三', '四', '五', '六']
 const calendarDays = ref([])
 
 // 奖励列表
