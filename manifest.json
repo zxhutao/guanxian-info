@@ -45,6 +45,10 @@
     }
   },
   "quickapp": {},
+  "uniCloud": {
+    "provider": "tencent",
+    "spaceId": "cloudbase-1gkioadld4516142"
+  },
   "mp-weixin": {
     "appid": "wx9a6299503beaac19",
     "setting": {
@@ -62,11 +66,7 @@
       "uglifyFileName": false
     },
     "usingComponents": true,
-    "cloudfunctionRoot": "./cloudfunctions/",
-    "uniCloud": {
-      "provider": "tencent",
-      "spaceId": "cloudbase-1gkioadld4516142"
-    }
+    "cloudfunctionRoot": "./cloudfunctions/"
   },
   "mp-alipay": {
     "usingComponents": true
