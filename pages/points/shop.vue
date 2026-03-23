@@ -24,7 +24,7 @@
       <view class="points-tips" @click="goCheckin">
         <text class="tips-icon">🎁</text>
         <text class="tips-text">每日签到可获10积分，连续签到奖励更大</text>
-        <text class="tips-arrow">&gt;</text>
+        <text class="tips-arrow">›</text>
       </view>
     </view>
 
