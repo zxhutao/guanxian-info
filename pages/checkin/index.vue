@@ -65,7 +65,7 @@
         <view class="month-selector">
           <text class="arrow" @click="changeMonth(-1)">&lt;</text>
           <text class="month-text">{{ currentYear }}年{{ currentMonth }}月</text>
-          <text class="arrow" @click="changeMonth(1)">&gt;</text>
+          <text class="arrow" @click="changeMonth(1)">&gt;&gt;</text>
         </view>
       </view>
       <view class="calendar">
