@@ -10,11 +10,11 @@
 
     <!-- 轮播图 -->
     <view class="banner-section">
-      <swiper class="banner-swiper" autoplay circular indicator-dots>
+      <swiper class="banner-swiper" autoplay circular indicator-dots @change="onBannerChange">
         <!-- 品牌展示 Banner -->
-        <swiper-item>
+        <swiper-item @click="toJobList">
           <view class="banner-item brand-banner">
-            <image class="brand-logo" src="/static/images/logo.png" mode="aspectFit" />
+            <image lazy-load class="brand-logo" src="/static/images/logo.png" mode="aspectFit" />
             <view class="brand-info">
               <text class="brand-name">冠帮帮</text>
               <text class="brand-slogan">冠县人必备的生活入口</text>
@@ -29,13 +29,13 @@
           </view>
         </swiper-item>
         <!-- 功能宣传 Banner -->
-        <swiper-item>
+        <swiper-item @click="toJobList">
           <view class="banner-item" style="background: linear-gradient(135deg, #FF6B35 0%, #F7931E 100%);">
             <text class="banner-text">找工作</text>
             <text class="banner-sub">本地工厂直招 · 包吃包住</text>
           </view>
         </swiper-item>
-        <swiper-item>
+        <swiper-item @click="toNursingList">
           <view class="banner-item" style="background: linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%);">
             <text class="banner-text">养老护理</text>
             <text class="banner-sub">专业护工 · 放心托付</text>
@@ -75,9 +75,9 @@
       <view class="job-list">
         <view
           v-for="job in hotJobs"
-          :key="job.id"
+          :key="job._id || job.id"
           class="job-card"
-          @click="toJobDetail(job.id)"
+          @click="toJobDetail(job._id || job.id)"
         >
           <view class="job-header">
             <text class="job-title">{{ job.title }}</text>
@@ -138,9 +138,9 @@
       <view class="caregiver-list">
         <view
           v-for="caregiver in caregivers"
-          :key="caregiver.id"
+          :key="caregiver._id || caregiver.id"
           class="caregiver-card"
-          @click="toCaregiverDetail(caregiver.id)"
+          @click="toCaregiverDetail(caregiver._id || caregiver.id)"
         >
           <view class="caregiver-avatar">👩</view>
           <view class="caregiver-info">
@@ -167,14 +167,24 @@
 import { ref } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
 
-// 热门职位 - 静态数据
-const hotJobs = ref([
-  { id: 1, title: '普工/操作工', company: '冠县光明玻璃厂', salary: '5000-8000元/月', location: '冠县工业园区', tags: ['包吃', '包住', '五险'] },
-  { id: 2, title: '质检员', company: '山东华兴金属', salary: '4500-6000元/月', location: '冠县开发区', tags: ['长白班', '环境好'] },
-  { id: 3, title: '叉车司机', company: '冠县顺达物流', salary: '5500-7000元/月', location: '冠县物流园', tags: ['持证上岗', '加班费'] }
-])
+// ========== 兜底数据 ==========
+const defaultHotJobs = [
+  { _id: '1', title: '普工/操作工', company: '冠县光明玻璃厂', salary: '5000-8000元/月', location: '冠县工业园区', tags: ['包吃', '包住', '五险'] },
+  { _id: '2', title: '质检员', company: '山东华兴金属', salary: '4500-6000元/月', location: '冠县开发区', tags: ['长白班', '环境好'] },
+  { _id: '3', title: '叉车司机', company: '冠县顺达物流', salary: '5500-7000元/月', location: '冠县物流园', tags: ['持证上岗', '加班费'] }
+]
+const defaultCaregivers = [
+  { _id: '1', name: '张阿姨', experience: 5, skill: '老年护理', price: '200元/天', rating: 4.9 },
+  { _id: '2', name: '李大姐', experience: 3, skill: '康复护理', price: '220元/天', rating: 4.8 }
+]
 
-// 生活服务
+// ========== 响应式数据 ==========
+const hotJobs = ref(defaultHotJobs)
+const caregivers = ref(defaultCaregivers)
+const jobsLoading = ref(false)
+const workersLoading = ref(false)
+
+// 生活服务（固定数据，无需请求）
 const services = ref([
   { name: '家政保洁', icon: '🧹', category: 'housekeeping' },
   { name: '家电维修', icon: '🔧', category: 'appliance' },
@@ -184,12 +194,6 @@ const services = ref([
   { name: '婚庆摄影', icon: '📷', category: 'photo' },
   { name: '装修建材', icon: '🏠', category: 'renovation' },
   { name: '汽车服务', icon: '🚗', category: 'car' }
-])
-
-// 护工推荐 - 静态数据
-const caregivers = ref([
-  { id: 1, name: '张阿姨', experience: 5, skill: '老年护理', price: '200元/天', rating: 4.9 },
-  { id: 2, name: '李大姐', experience: 3, skill: '康复护理', price: '220元/天', rating: 4.8 }
 ])
 
 // 快捷入口
@@ -204,12 +208,69 @@ const quickEntries = [
   { icon: '🎁', label: '积分商城', path: '/pages/points/shop', color: '#E91E63' }
 ]
 
-// 跳转搜索
+// ========== 加载热门职位 ==========
+const loadHotJobs = async () => {
+  jobsLoading.value = true
+  try {
+    const res = await wx.cloud.callFunction({
+      name: 'jobList',
+      data: {
+        page: 1,
+        pageSize: 5
+      }
+    })
+    if (res.result && res.result.success && res.result.data && res.result.data.length > 0) {
+      hotJobs.value = res.result.data
+      console.log('[首页] 职位数据加载成功，共', res.result.data.length, '条')
+    } else {
+      console.log('[首页] 职位数据为空，使用兜底数据')
+      hotJobs.value = defaultHotJobs
+    }
+  } catch (e) {
+    console.error('[首页] 职位数据加载失败:', e)
+    hotJobs.value = defaultHotJobs
+  } finally {
+    jobsLoading.value = false
+  }
+}
+
+// ========== 加载护工推荐 ==========
+const loadCaregivers = async () => {
+  workersLoading.value = true
+  try {
+    const res = await wx.cloud.callFunction({
+      name: 'getWorkers',
+      data: {
+        page: 1,
+        pageSize: 3
+      }
+    })
+    if (res.result && res.result.success && res.result.data && res.result.data.length > 0) {
+      caregivers.value = res.result.data
+      console.log('[首页] 护工数据加载成功，共', res.result.data.length, '条')
+    } else {
+      console.log('[首页] 护工数据为空，使用兜底数据')
+      caregivers.value = defaultCaregivers
+    }
+  } catch (e) {
+    console.error('[首页] 护工数据加载失败:', e)
+    caregivers.value = defaultCaregivers
+  } finally {
+    workersLoading.value = false
+  }
+}
+
+// ========== 首页数据加载 ==========
+const loadIndexData = () => {
+  loadHotJobs()
+  loadCaregivers()
+}
+
+// ========== 路由方法 ==========
 const toSearch = () => {
   uni.navigateTo({ url: '/subpackages/search/index' })
 }
 
-// 导航
 const navigateTo = (path) => {
   const tabPages = ['/pages/index/index', '/pages/job/list', '/pages/service/index', '/pages/nursing/index', '/pages/user/index']
   if (tabPages.includes(path)) {
@@ -227,6 +288,17 @@ const toServiceDetail = (service) => {
 }
 const toNursingList = () => uni.switchTab({ url: '/pages/nursing/index' })
 const toCaregiverDetail = (id) => uni.navigateTo({ url: `/pages/nursing/detail?id=${id}` })
+
+// 轮播图切换事件
+const onBannerChange = (e) => {
+  console.log('[首页] 轮播图切换:', e.detail.current)
+}
+
+// 首页显示时加载数据
+onShow(() => {
+  loadIndexData()
+})
+
 </script>
 
 <style lang="scss" scoped>

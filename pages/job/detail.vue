@@ -11,6 +11,17 @@
         <text class="label">工作地点</text>
         <text class="value">{{ job.location }}</text>
       </view>
+      <!-- 位置导航卡片 -->
+      <view v-if="job.latitude && job.longitude" class="location-card" @click="openLocation">
+        <view class="location-info">
+          <text class="location-icon">📍</text>
+          <text class="location-text">{{ job.location }}</text>
+        </view>
+        <view class="map-btn">
+          <text>查看地图</text>
+          <text class="arrow">›</text>
+        </view>
+      </view>
       <view class="info-row">
         <text class="label">工作经验</text>
         <text class="value">{{ job.experience }}</text>
@@ -51,27 +62,33 @@
     </view>
 
     <view class="bottom-bar">
-      <view class="action-btn favorite" @click="handleFavorite">
-        <text>⭐</text>
-        <text>收藏</text>
+      <view class="action-btn favorite" :class="{ active: isCollected }" @click="handleFavorite">
+        <text>{{ isCollected ? '❤️' : '🤍' }}</text>
+        <text>{{ isCollected ? '已收藏' : '收藏' }}</text>
       </view>
       <view class="action-btn share" @click="handleShare">
         <text>📤</text>
         <text>分享</text>
       </view>
+      <view class="chat-btn" @click="handleChat">咨询</view>
       <view class="apply-btn" @click="handleApply">立即报名</view>
     </view>
   </view>
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
+import { ref, computed, onMounted } from 'vue'
+import { onShareAppMessage, onShareTimeline, onLoad } from '@dcloudio/uni-app'
+
+const jobId = ref('')
+const isCollected = ref(false)
 
 const job = ref({
   title: '普工/操作工',
   salary: '5000-8000元/月',
   location: '冠县工业园区',
+  latitude: '36.48',  // 示例纬度
+  longitude: '115.56', // 示例经度
   experience: '不限',
   education: '不限',
   count: 10,
@@ -82,12 +99,84 @@ const job = ref({
   phone: '138****8888'
 })
 
-const handleFavorite = () => {
-  uni.showToast({ title: '收藏成功', icon: 'success' })
+// 打开地图导航
+const openLocation = () => {
+  if (!job.value.latitude || !job.value.longitude) {
+    uni.showToast({ title: '位置信息有误', icon: 'none' })
+    return
+  }
+  uni.openLocation({
+    name: job.value.location,
+    address: job.value.location,
+    latitude: parseFloat(job.value.latitude),
+    longitude: parseFloat(job.value.longitude),
+    success: () => {
+      console.log('打开地图成功')
+    },
+    fail: (err) => {
+      console.error('打开地图失败', err)
+      uni.showToast({ title: '打开地图失败', icon: 'none' })
+    }
+  })
 }
 
+// 获取收藏状态
+const loadCollectStatus = () => {
+  try {
+    const collectList = uni.getStorageSync('collect_job') || []
+    isCollected.value = collectList.some(item => item.id === jobId.value)
+  } catch (e) {
+    console.error('读取收藏状态失败', e)
+  }
+}
+
+// 处理收藏
+const handleFavorite = () => {
+  try {
+    let collectList = uni.getStorageSync('collect_job') || []
+    
+    if (isCollected.value) {
+      // 已收藏，取消收藏
+      collectList = collectList.filter(item => item.id !== jobId.value)
+      isCollected.value = false
+      uni.showToast({ title: '已取消收藏', icon: 'success' })
+    } else {
+      // 未收藏，添加收藏
+      const jobItem = {
+        id: jobId.value,
+        title: job.value.title,
+        salary: job.value.salary,
+        company: job.value.company,
+        tags: ['热招', '急招'],
+        collected: true
+      }
+      collectList.push(jobItem)
+      isCollected.value = true
+      uni.showToast({ title: '收藏成功', icon: 'success' })
+    }
+    
+    uni.setStorageSync('collect_job', collectList)
+  } catch (e) {
+    console.error('收藏操作失败', e)
+    uni.showToast({ title: '操作失败，请重试', icon: 'error' })
+  }
+}
+
+onLoad((options) => {
+  jobId.value = options.id || 'job_' + Date.now()
+  loadCollectStatus()
+})
+
 const handleShare = () => {
-  try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
+  enableShareMenu()
+}
+
+const enableShareMenu = () => {
+  // #ifdef MP-WEIXIN
+  uni.showShareMenu({ withShareTicket: true }).catch(() => {
+    // 分享菜单已禁用或出错，静默处理
+  })
+  // #endif
 }
 
 // 分享给好友
@@ -117,6 +206,20 @@ const handleApply = () => {
         uni.showToast({ title: '报名成功', icon: 'success' })
       }
     }
+  })
+}
+
+// 联系企业/咨询
+const handleChat = () => {
+  // 构建会话ID（格式：conv_用户openid_企业id）
+  const userInfo = uni.getStorageSync('userInfo') || {}
+  const userId = userInfo.openId || 'guest_' + Date.now()
+  const companyId = job.value.company || 'company_default'
+  const conversationId = `conv_${userId}_${companyId}`
+  
+  // 跳转到聊天页面
+  uni.navigateTo({
+    url: `/pages/chat/index?conversationId=${conversationId}&name=${encodeURIComponent(job.value.company)}&avatar=${encodeURIComponent('https://img.yzcdn.cn/vant/cat.jpeg')}&toId=${companyId}`
   })
 }
 </script>
@@ -168,6 +271,47 @@ const handleApply = () => {
 
     .value {
       color: #333;
+      font-weight: 500;
+    }
+  }
+  
+  // 位置导航卡片
+  .location-card {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20rpx;
+    margin: 16rpx 0;
+    background: #f0f9ff;
+    border-radius: 12rpx;
+    border: 1rpx solid #91d5ff;
+
+    .location-info {
+      display: flex;
+      align-items: center;
+      flex: 1;
+
+      .location-icon {
+        font-size: 32rpx;
+        margin-right: 12rpx;
+      }
+
+      .location-text {
+        font-size: 26rpx;
+        color: #333;
+      }
+    }
+
+    .map-btn {
+      display: flex;
+      align-items: center;
+      color: #1890ff;
+      font-size: 26rpx;
+
+      .arrow {
+        font-size: 32rpx;
+        margin-left: 4rpx;
+      }
     }
   }
 
@@ -216,10 +360,26 @@ const handleApply = () => {
     font-size: 22rpx;
     color: #666;
     gap: 8rpx;
+    transition: all 0.3s;
+    
+    &.active {
+      color: #E63946;
+      font-weight: bold;
+    }
+  }
+
+  .chat-btn {
+    flex: 1;
+    background: #2196F3;
+    color: #fff;
+    text-align: center;
+    padding: 24rpx;
+    border-radius: 50rpx;
+    font-size: 32rpx;
   }
 
   .apply-btn {
-    flex: 1;
+    flex: 0.8;
     background: #E63946;
     color: #fff;
     text-align: center;

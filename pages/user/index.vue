@@ -3,7 +3,7 @@
     <!-- 用户信息 -->
     <view class="user-header">
       <view class="user-info" @click="goLogin">
-        <image class="avatar" :src="userInfo.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
+        <image lazy-load class="avatar" :src="userInfo.avatar || '/static/images/default-avatar.png'" mode="aspectFill"></image>
         <view class="user-meta">
           <text class="nickname">{{ userInfo.nickname || '点击登录' }}</text>
           <view class="user-level" v-if="isLogin">
@@ -67,18 +67,10 @@
         <text class="item-arrow">›</text>
       </view>
       
-      <view class="function-item" @click="goToPage('/pages/user/coupons')">
-        <view class="item-left">
-          <text class="item-icon">🎫</text>
-          <text class="item-text">我的优惠券</text>
-        </view>
-        <text class="item-arrow">›</text>
-      </view>
-      
       <view class="function-item" @click="goToPage('/pages/points/items')">
         <view class="item-left">
           <text class="item-icon">🎁</text>
-          <text class="item-text">我的道具</text>
+          <text class="item-text">我的优惠券和道具</text>
         </view>
         <text class="item-arrow">›</text>
       </view>
@@ -153,6 +145,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { callCloud } from '@/utils/cloud'
 
 const userInfo = ref({})
 const userPoints = ref(0)
@@ -171,28 +164,38 @@ const levelName = computed(() => {
 // 获取用户信息
 const getUserInfo = async () => {
   try {
-    // 检查登录状态
-    const loginRes = await uni.getStorage({ key: 'userInfo' })
-    if (loginRes.data) {
-      userInfo.value = loginRes.data
+    // 检查登录状态 - 优先从本地存储读取
+    const loginRes = uni.getStorageSync('userInfo')
+    console.log('读取到的用户信息:', loginRes)
+    
+    // 兼容多种数据格式
+    if (loginRes && (loginRes._id || loginRes._openid)) {
+      userInfo.value = {
+        _id: loginRes._id || '',
+        _openid: loginRes._openid || '',
+        userType: loginRes.userType || 'jobseeker',
+        nickname: loginRes.nickname || loginRes.profile?.nickname || '冠帮帮用户',
+        avatar: loginRes.avatar || loginRes.profile?.avatar || '',
+        phone: loginRes.phone || loginRes.profile?.phone || ''
+      }
       // 获取积分
       getUserPoints()
+    } else {
+      console.log('未登录或用户信息格式不对')
     }
   } catch (e) {
-    console.log('未登录')
+    console.log('读取用户信息失败', e)
   }
 }
 
 // 获取用户积分
 const getUserPoints = async () => {
   try {
-    const res = await uniCloud.callFunction({
-      name: 'point-deduct',
-      data: { action: 'getUserPoints' }
-    })
-    
-    if (res.result.code === 0) {
-      userPoints.value = res.result.data.points
+    const result = await callCloud('checkin', { action: 'getPointsInfo' })
+    console.log('【积分调试】getPointsInfo 返回:', JSON.stringify(result))
+    if (result && result.code === 0) {
+      userPoints.value = result.data?.points || 0
+      console.log('【积分调试】设置用户积分:', userPoints.value, '原始数据:', result.data)
     }
   } catch (e) {
     console.log('获取积分失败，使用默认积分', e)
@@ -212,7 +215,11 @@ const goToPage = (url) => {
 // 登录
 const goLogin = () => {
   if (!isLogin.value) {
+    // 未登录 -> 跳转到登录页
     uni.navigateTo({ url: '/pages/auth/login' })
+  } else {
+    // 已登录 -> 跳转到个人信息编辑页
+    uni.navigateTo({ url: '/pages/user/profile' })
   }
 }
 

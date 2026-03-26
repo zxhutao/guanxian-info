@@ -153,15 +153,41 @@ const switchTab = (tab) => {
 }
 
 // 加载结算列表
-const loadSettlementList = async () => {
-  // 调用云函数获取数据
-  // const res = await uniCloud.callFunction({
-  //   name: 'point-deduct',
-  //   data: { 
-  //     action: 'getMerchantSettlementList',
-  //     status: currentTab.value === 'all' ? undefined : currentTab.value
-  //   }
-  // })
+const loadSettlementList = () => {
+  // 使用模拟数据，实际应调用云函数
+  const allData = [
+    {
+      _id: '1',
+      orderId: '2026032212345',
+      orderAmount: '100.00',
+      deductAmount: '15.00',
+      merchantCost: '6.00',
+      platformCost: '9.00',
+      settleAmount: '85.00',
+      status: 'pending',
+      statusText: '待结算',
+      createdAt: Date.now() - 3600000
+    },
+    {
+      _id: '2',
+      orderId: '2026032112344',
+      orderAmount: '200.00',
+      deductAmount: '20.00',
+      merchantCost: '8.00',
+      platformCost: '12.00',
+      settleAmount: '172.00',
+      status: 'settled',
+      statusText: '已结算',
+      createdAt: Date.now() - 86400000
+    }
+  ]
+
+  // 根据当前标签过滤
+  if (currentTab.value === 'all') {
+    settlementList.value = allData
+  } else {
+    settlementList.value = allData.filter(item => item.status === currentTab.value)
+  }
 }
 
 // 格式化时间

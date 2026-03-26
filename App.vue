@@ -1,21 +1,17 @@
-<template>
-  <view class="app-container">
-    <!-- 全局容器 -->
-  </view>
-</template>
-
 <script setup>
 import { onLaunch, onShow, onHide } from '@dcloudio/uni-app'
-import { useUserStore } from './stores/user'
-
-// const userStore = useUserStore()
 
 onLaunch(() => {
   console.log('App Launch')
-  // 检查登录状态
-  // if (!userStore.isLoggedIn) {
-  //   userStore.login()
-  // }
+
+  // 初始化云开发
+  // #ifdef MP-WEIXIN
+  wx.cloud.init({
+    env: 'cloudbase-1gkioadld4516142', // 云环境ID
+    traceUser: true // 记录用户访问
+  })
+  console.log('云开发已初始化')
+  // #endif
 })
 
 onShow(() => {

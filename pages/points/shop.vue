@@ -36,7 +36,7 @@
           :key="cat.value"
           class="tab-item"
           :class="{ active: currentCategory === cat.value }"
-          @click="currentCategory = cat.value"
+          @click="switchCategory(cat.value)"
         >
           {{ cat.name }}
         </view>
@@ -47,11 +47,11 @@
     <view class="goods-list">
       <view
         v-for="item in filteredGoods"
-        :key="item.id"
+        :key="item._id"
         class="goods-item"
         @click="goGoodsDetail(item)"
       >
-        <image class="goods-image" :src="item.image" mode="aspectFill" />
+        <image lazy-load class="goods-image" :src="item.image" mode="aspectFill" />
         <view class="goods-info">
           <text class="goods-name">{{ item.name }}</text>
           <text class="goods-desc">{{ item.description }}</text>
@@ -74,23 +74,29 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { callCloud } from '@/utils/cloud'
 
 // 数据
-const userPoints = ref(520)
-const totalPoints = ref(1680)
+const userPoints = ref(0)
+const totalPoints = ref(0)
 const currentCategory = ref('all')
+const goodsList = ref([])
+const loading = ref(false)
 
 const categories = [
   { name: '全部', value: 'all' },
   { name: '优惠券', value: 'coupon' },
+  { name: '置顶卡', value: 'top_card' },
   { name: '生活用品', value: 'daily' },
   { name: '数码配件', value: 'digital' },
   { name: '食品生鲜', value: 'food' }
 ]
 
-const goodsList = [
+// 默认兜底商品（云端无数据时显示）
+const defaultGoods = [
   {
-    id: '1',
+    _id: 'd1',
     name: '满50减10元优惠券',
     description: '冠县本地商家通用',
     points: 100,
@@ -98,7 +104,7 @@ const goodsList = [
     category: 'coupon'
   },
   {
-    id: '2',
+    _id: 'd2',
     name: '保洁服务8折券',
     description: '限冠县本地保洁服务',
     points: 200,
@@ -106,47 +112,15 @@ const goodsList = [
     category: 'coupon'
   },
   {
-    id: '3',
-    name: '抽纸一提（3包）',
-    description: '原生竹纤维，柔软亲肤',
+    _id: 'd3',
+    name: '职位置顶卡（7天）',
+    description: '让您的职位排在最前面',
     points: 300,
     image: 'https://img.yzcdn.cn/vant/cat.jpeg',
-    category: 'daily'
+    category: 'top_card'
   },
   {
-    id: '4',
-    name: '洗衣液2kg装',
-    description: '深层清洁，护色留香',
-    points: 500,
-    image: 'https://img.yzcdn.cn/vant/cat.jpeg',
-    category: 'daily'
-  },
-  {
-    id: '5',
-    name: '手机数据线',
-    description: '快充线，1米长',
-    points: 150,
-    image: 'https://img.yzcdn.cn/vant/cat.jpeg',
-    category: 'digital'
-  },
-  {
-    id: '6',
-    name: '充电宝10000mAh',
-    description: '小巧便携，双USB输出',
-    points: 800,
-    image: 'https://img.yzcdn.cn/vant/cat.jpeg',
-    category: 'digital'
-  },
-  {
-    id: '7',
-    name: '新鲜鸡蛋30枚',
-    description: '农家散养土鸡蛋',
-    points: 400,
-    image: 'https://img.yzcdn.cn/vant/cat.jpeg',
-    category: 'food'
-  },
-  {
-    id: '8',
+    _id: 'd4',
     name: '冠县特色烧鸡',
     description: '当地知名老字号',
     points: 1000,
@@ -155,19 +129,97 @@ const goodsList = [
   }
 ]
 
+onShow(() => {
+  loadUserPoints()
+  loadGoodsList()
+})
+
+// 加载用户积分
+const loadUserPoints = async () => {
+  try {
+    const result = await callCloud('getUserInfo', {})
+    if (result && result.success && result.data) {
+      userPoints.value = result.data.points || 0
+      totalPoints.value = result.data.totalPoints || result.data.points || 0
+    }
+  } catch (err) {
+    console.error('获取用户积分失败:', err)
+  }
+}
+
+// 加载商品列表
+const loadGoodsList = async () => {
+  loading.value = true
+  const category = currentCategory.value === 'all' ? '' : currentCategory.value
+  try {
+    const result = await callCloud('exchange', {
+      action: 'getGoodsList',
+      data: { category, page: 1, pageSize: 50 }
+    })
+    if (result && result.code === 0 && result.data && result.data.length > 0) {
+      goodsList.value = result.data
+    } else {
+      goodsList.value = defaultGoods
+    }
+  } catch (err) {
+    console.error('获取商品列表失败:', err)
+    goodsList.value = defaultGoods
+  } finally {
+    loading.value = false
+  }
+}
+
 const filteredGoods = computed(() => {
   if (currentCategory.value === 'all') {
-    return goodsList
+    return goodsList.value
   }
-  return goodsList.filter(item => item.category === currentCategory.value)
+  return goodsList.value.filter(item => item.category === currentCategory.value)
 })
+
+const switchCategory = (value) => {
+  currentCategory.value = value
+  loadGoodsList()
+}
 
 const goCheckin = () => {
   uni.navigateTo({ url: '/pages/checkin/index' })
 }
 
 const goGoodsDetail = (item) => {
-  uni.showToast({ title: '商品详情开发中', icon: 'none' })
+  if (userPoints.value < item.points) {
+    uni.showToast({ title: '积分不足，去签到获取更多积分吧', icon: 'none' })
+    return
+  }
+  uni.showModal({
+    title: '确认兑换',
+    content: `确认使用 ${item.points} 积分兑换「${item.name}」？`,
+    success: (res) => {
+      if (res.confirm) {
+        doExchange(item)
+      }
+    }
+  })
+}
+
+const doExchange = async (item) => {
+  uni.showLoading({ title: '兑换中...' })
+  try {
+    const result = await callCloud('exchange', {
+      action: 'exchangeGoods',
+      data: { goodsId: item._id, quantity: 1 }
+    })
+    if (result && result.code === 0) {
+      uni.showToast({ title: '兑换成功！', icon: 'success' })
+      loadUserPoints()
+    } else {
+      uni.showToast({ title: result?.message || '兑换失败', icon: 'none' })
+    }
+  } catch (err) {
+    console.error('兑换失败:', err)
+    uni.showToast({ title: '兑换失败，请重试', icon: 'none' })
+  } finally {
+    uni.hideLoading()
+  }
 }
 </script>
 

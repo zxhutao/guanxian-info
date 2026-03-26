@@ -3,8 +3,7 @@
     <!-- 用户信息卡片 -->
     <view class="user-card">
       <view class="user-info" @click="editProfile">
-        <image
-          class="user-avatar"
+        <image lazy-load class="user-avatar"
           :src="userInfo.avatarUrl || '/static/images/default-avatar.png'"
           mode="aspectFill"
         />
@@ -76,6 +75,18 @@
         <text class="item-icon">🔄</text>
         <text class="item-text">检查更新</text>
         <view class="item-value">v1.0.0</view>
+        <view class="item-arrow">›</view>
+      </view>
+
+      <view class="settings-item" @click="goToAgreement">
+        <text class="item-icon">📄</text>
+        <text class="item-text">用户服务协议</text>
+        <view class="item-arrow">›</view>
+      </view>
+
+      <view class="settings-item" @click="goToPrivacy">
+        <text class="item-icon">🔒</text>
+        <text class="item-text">隐私政策</text>
         <view class="item-arrow">›</view>
       </view>
 
@@ -173,6 +184,14 @@ const clearCache = () => {
 
 const checkUpdate = () => {
   uni.showToast({ title: '已是最新版本', icon: 'success' })
+}
+
+const goToAgreement = () => {
+  uni.navigateTo({ url: '/pages/user/agreement' })
+}
+
+const goToPrivacy = () => {
+  uni.navigateTo({ url: '/pages/user/privacy' })
 }
 
 const aboutApp = () => {

@@ -3,7 +3,7 @@
     <!-- 基本信息 -->
     <view class="info-card">
       <view class="caregiver-main">
-        <image class="avatar" :src="caregiver.avatar" mode="aspectFill" />
+        <image lazy-load class="avatar" :src="caregiver.avatar" mode="aspectFill" />
         <view class="basic-info">
           <view class="name-row">
             <view class="name">{{ caregiver.name }}</view>
@@ -102,6 +102,10 @@
           <u-icon name="share" size="32rpx" color="#4CAF50" />
           <text>分享</text>
         </view>
+        <view class="contact-btn" @click="handleCollect" :class="{ active: isCollected }">
+          <text style="font-size: 32rpx;">{{ isCollected ? '❤️' : '🤍' }}</text>
+          <text>{{ isCollected ? '已收藏' : '收藏' }}</text>
+        </view>
       </view>
     </view>
 
@@ -125,6 +129,7 @@ import { onLoad, onShareAppMessage, onShareTimeline } from '@dcloudio/uni-app'
 import { makePhoneCall, showConfirm } from '../../utils/index'
 
 const caregiverId = ref('')
+const isCollected = ref(false)
 const caregiver = ref({
   name: '',
   avatar: '',
@@ -140,6 +145,49 @@ const caregiver = ref({
   experienceList: []
 })
 const reviews = ref([])
+
+// 加载收藏状态
+const loadCollectStatus = () => {
+  try {
+    const collectList = uni.getStorageSync('collect_nursing') || []
+    isCollected.value = collectList.some(item => item.id === caregiverId.value)
+  } catch (e) {
+    console.error('读取收藏状态失败', e)
+  }
+}
+
+// 处理收藏
+const handleCollect = () => {
+  try {
+    let collectList = uni.getStorageSync('collect_nursing') || []
+    
+    if (isCollected.value) {
+      // 已收藏，取消收藏
+      collectList = collectList.filter(item => item.id !== caregiverId.value)
+      isCollected.value = false
+      uni.showToast({ title: '已取消收藏', icon: 'success' })
+    } else {
+      // 未收藏，添加收藏
+      const nursingItem = {
+        id: caregiverId.value,
+        name: caregiver.value.name,
+        price: caregiver.value.price,
+        experience: caregiver.value.yearsExperience,
+        skill: caregiver.value.services[0],
+        rating: caregiver.value.rating,
+        collected: true
+      }
+      collectList.push(nursingItem)
+      isCollected.value = true
+      uni.showToast({ title: '收藏成功', icon: 'success' })
+    }
+    
+    uni.setStorageSync('collect_nursing', collectList)
+  } catch (e) {
+    console.error('收藏操作失败', e)
+    uni.showToast({ title: '操作失败，请重试', icon: 'error' })
+  }
+}
 
 const caregiverData = {
   1: {
@@ -210,9 +258,10 @@ onLoad((options) => {
   const data = caregiverData[caregiverId.value] || caregiverData[1]
   caregiver.value = data
   reviews.value = reviewData
+  loadCollectStatus()
 
   // 启用分享功能
-  try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
+  enableShareMenu()
 })
 
 // 分享给好友
@@ -234,7 +283,15 @@ onShareTimeline(() => {
 })
 
 const handleShare = () => {
-  try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
+  enableShareMenu()
+}
+
+const enableShareMenu = () => {
+  // #ifdef MP-WEIXIN
+  uni.showShareMenu({ withShareTicket: true }).catch(() => {
+    // 分享菜单已禁用或出错，静默处理
+  })
+  // #endif
 }
 
 const bookCaregiver = () => {
@@ -248,8 +305,18 @@ const callPhone = () => {
   makePhoneCall(caregiver.value.phone)
 }
 
+// 在线咨询/联系护工
 const startChat = () => {
-  uni.showToast({ title: '在线咨询功能开发中', icon: 'none' })
+  // 构建会话ID
+  const userInfo = uni.getStorageSync('userInfo') || {}
+  const userId = userInfo.openId || 'guest_' + Date.now()
+  const chatTargetId = caregiver.value.name || 'caregiver_default'
+  const conversationId = `conv_${userId}_${chatTargetId}`
+  
+  // 跳转到聊天页面
+  uni.navigateTo({
+    url: `/pages/chat/index?conversationId=${conversationId}&name=${encodeURIComponent(caregiver.value.name)}&avatar=${encodeURIComponent(caregiver.value.avatar)}&toId=${chatTargetId}`
+  })
 }
 </script>
 

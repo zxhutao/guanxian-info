@@ -151,7 +151,7 @@ const switchTab = (tab) => {
 // 加载明细列表
 const loadDetailList = async () => {
   // 这里调用云函数获取数据
-  // const res = await uniCloud.callFunction({
+  // const res = await wx.cloud.callFunction({
   //   name: 'point-deduct',
   //   data: { action: 'getPointDetail', type: currentTab.value }
   // })

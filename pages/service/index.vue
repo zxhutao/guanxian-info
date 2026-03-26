@@ -136,7 +136,7 @@
         @click="toDetail(service)"
       >
         <view class="service-left">
-          <image :src="service.image" mode="aspectFill" class="service-image" />
+          <image lazy-load :src="service.image" mode="aspectFill" class="service-image" />
           <view class="service-badge" v-if="service.isVerified">已认证</view>
         </view>
         <view class="service-right">

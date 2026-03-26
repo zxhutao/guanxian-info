@@ -22,7 +22,7 @@
       @scrolltoupper="loadMore"
     >
       <view class="loading-more" v-if="loadingMore">
-        <text class="loading-text">加载?..</text>
+        <text class="loading-text">加载中...</text>
       </view>
       
       <view 
@@ -40,8 +40,7 @@
         <!-- 消息气泡 -->
         <view class="message-content-wrapper">
           <!-- 对方头像 -->
-          <image 
-            v-if="msg.fromId !== openId" 
+          <image lazy-load v-if="msg.fromId !== openId" 
             :src="chatAvatar" 
             class="message-avatar" 
             mode="aspectFill"
@@ -50,8 +49,7 @@
           <!-- 消息气泡 -->
           <view class="message-bubble" :class="{ 'bubble-self': msg.fromId === openId }">
             <!-- 图片消息 -->
-            <image 
-              v-if="msg.type === 'image'" 
+            <image lazy-load v-if="msg.type === 'image'" 
               :src="msg.content" 
               class="message-image"
               mode="aspectFill"
@@ -62,8 +60,7 @@
           </view>
           
           <!-- 自己头像 -->
-          <image 
-            v-if="msg.fromId === openId" 
+          <image lazy-load v-if="msg.fromId === openId" 
             :src="myAvatar" 
             class="message-avatar" 
             mode="aspectFill"
@@ -73,6 +70,20 @@
       
       <view id="bottom" class="bottom-anchor"></view>
     </scroll-view>
+
+    <!-- 表情选择面板 -->
+    <view v-if="showEmoji" class="emoji-panel">
+      <scroll-view scroll-y class="emoji-list">
+        <view 
+          v-for="(emoji, index) in emojiList" 
+          :key="index"
+          class="emoji-item"
+          @click="selectEmoji(emoji)"
+        >
+          <text>{{ emoji }}</text>
+        </view>
+      </scroll-view>
+    </view>
 
     <!-- 底部输入?-->
     <view class="input-area">
@@ -112,6 +123,26 @@ import { onLoad } from '@dcloudio/uni-app'
 const inputText = ref('')
 const messages = ref([])
 const scrollTop = ref(0)
+const showEmoji = ref(false)
+
+// 常用表情列表
+const emojiList = [
+  '😀', '😃', '😄', '😁', '😅', '😂', '🤣', '😊', '😇', '🙂', '😉', '😌',
+  '😍', '🥰', '😘', '😋', '😛', '😜', '🤪', '😝', '🤗', '🤭', '🤫', '🤔',
+  '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥', '😌', '😔',
+  '😪', '🤤', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴',
+  '😵', '🤯', '🤠', '🥳', '😎', '🤓', '🧐', '😕', '😟', '🙁', '😮', '😯',
+  '😲', '😳', '🥺', '😦', '😧', '😨', '😰', '😥', '😢', '😭', '😱', '😖',
+  '😣', '😞', '😓', '😩', '😫', '🥱', '😤', '😡', '😠', '🤬', '😈', '👿',
+  '💀', '☠️', '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖', '👍', '👎'
+]
+
+// 选择表情
+const selectEmoji = (emoji) => {
+  inputText.value += emoji
+  // 选择表情后自动关闭表情面板
+  showEmoji.value = false
+}
 const scrollIntoView = ref('')
 const loadingMore = ref(false)
 const page = ref(1)
@@ -131,8 +162,10 @@ let messagesCollection = null
 
 onLoad(async (options) => {
   conversationId.value = options.conversationId || ''
-  chatName.value = options.name || '客服'
-  chatAvatar.value = options.avatar || 'https://img.yzcdn.cn/vant/cat.jpeg'
+  // 解码URL编码的中文名称
+  chatName.value = decodeURIComponent(options.name || '客服')
+  // 解码头像URL
+  chatAvatar.value = decodeURIComponent(options.avatar || 'https://img.yzcdn.cn/vant/cat.jpeg')
   toId.value = options.toId || ''
   
   // 获取当前用户openId
@@ -146,7 +179,7 @@ onLoad(async (options) => {
 const initUserInfo = async () => {
   // #ifdef MP-WEIXIN
   try {
-    const res = await uniCloud.callFunction({
+    const res = await wx.cloud.callFunction({
       name: 'login'
     })
     if (res.result && res.result.openid) {
@@ -169,7 +202,7 @@ const initUserInfo = async () => {
 const initDatabase = () => {
   // #ifdef MP-WEIXIN
   if (!db) {
-    db = uniCloud.database()
+    db = wx.cloud.database()
     messagesCollection = db.collection('chat_messages')
   }
   loadMessages()
@@ -279,7 +312,7 @@ const sendTextMessage = async () => {
   
   try {
     // #ifdef MP-WEIXIN
-    await uniCloud.callFunction({
+    await wx.cloud.callFunction({
       name: 'sendMessage',
       data: msg
     })
@@ -318,7 +351,7 @@ const chooseImage = () => {
         // #ifdef MP-WEIXIN
         // 上传图片到云存储
         const cloudPath = `chat/${Date.now()}.jpg`
-        const uploadRes = await uniCloud.uploadFile({
+        const uploadRes = await wx.cloud.uploadFile({
           cloudPath,
           filePath: tempFilePath
         })
@@ -337,7 +370,7 @@ const chooseImage = () => {
         }
         
         // 调用云函数更新会?
-        await uniCloud.callFunction({
+        await wx.cloud.callFunction({
           name: 'sendMessage',
           data: {
             content: fileID,
@@ -358,7 +391,7 @@ const chooseImage = () => {
 const markAsRead = async (msgId) => {
   try {
     // #ifdef MP-WEIXIN
-    await uniCloud.callFunction({
+    await wx.cloud.callFunction({
       name: 'markAsRead',
       data: { messageId: msgId }
     })
@@ -558,6 +591,30 @@ const goBack = () => {
 
 .bottom-anchor {
   height: 20rpx;
+}
+
+// 表情选择面板
+.emoji-panel {
+  height: 300rpx;
+  background: #fff;
+  border-top: 1rpx solid #eee;
+  
+  .emoji-list {
+    height: 100%;
+    padding: 20rpx;
+    
+    .emoji-item {
+      display: inline-block;
+      width: 80rpx;
+      height: 80rpx;
+      text-align: center;
+      line-height: 80rpx;
+      
+      text {
+        font-size: 48rpx;
+      }
+    }
+  }
 }
 
 // 输入?

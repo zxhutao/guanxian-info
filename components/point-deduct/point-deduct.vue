@@ -67,6 +67,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { callCloud } from '@/utils/cloud'
 
 const props = defineProps({
   orderAmount: {
@@ -165,21 +166,15 @@ watch(() => props.orderAmount, (newVal) => {
 const initData = async () => {
   try {
     // 获取积分规则
-    const rulesRes = await uniCloud.callFunction({
-      name: 'point-deduct',
-      data: { action: 'getPointRules' }
-    })
-    if (rulesRes.result.code === 0) {
-      rules.value = rulesRes.result.data
+    const rulesData = await callCloud('point-deduct', { action: 'getPointRules' })
+    if (rulesData.code === 0) {
+      rules.value = rulesData.data
     }
     
     // 获取用户积分
-    const pointsRes = await uniCloud.callFunction({
-      name: 'point-deduct',
-      data: { action: 'getUserPoints' }
-    })
-    if (pointsRes.result.code === 0) {
-      userPoints.value = pointsRes.result.data.points
+    const pointsData = await callCloud('point-deduct', { action: 'getUserPoints' })
+    if (pointsData.code === 0) {
+      userPoints.value = pointsData.data.points
     }
   } catch (e) {
     console.error('获取积分数据失败', e)

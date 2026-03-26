@@ -1,0 +1,10 @@
+﻿  develop
+  feature/customer-service
+  feature/membership
+  feature/message-notification
+  feature/publish-function
+  feature/search-function
+  feature/service-categories
+  feature/share-improvements
+  fix/optimize-index-performance
+* master

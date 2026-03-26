@@ -1,70 +1,67 @@
 /**
- * 云开发配置
- * 使用微信云开发，无需配置服务器
+ * 云开发工具函数
+ * 统一封装微信云函数调用，解决 Vue3 script setup 中 wx 全局变量问题
  */
 
 // 云开发环境ID
-export const CLOUD_ENV = 'cloudbase-1gkioadld4516142';
+export const CLOUD_ENV = 'cloudbase-1gkioadld4516142'
 
-// 云函数名称
+// 云函数名称常量
 export const CLOUD_FUNCTIONS = {
-  // 职位相关
-  GET_JOBS: 'jobList',           // 获取职位列表
-  PUBLISH_JOB: 'publishJob',     // 发布职位
-  GET_HOT_JOBS: 'jobList',       // 热门职位（复用列表接口）
-
-  // 用户相关
-  GET_USER_INFO: 'getUserInfo',   // 获取用户信息
-
-  // 服务相关
-  GET_SERVICES: 'getServices',   // 获取服务列表
-  GET_WORKERS: 'getWorkers',     // 获取护工列表
-
-  // 初始化
-  INIT_DATA: 'initData',         // 初始化职位数据
-  INIT_SERVICES: 'initServices'  // 初始化服务和护工数据
-};
-
-/**
- * 调用云函数
- * @param {string} name 云函数名称
- * @param {object} data 参数
- * @returns {Promise}
- */
-export function callCloudFunction(name, data = {}) {
-  return new Promise((resolve, reject) => {
-    wx.cloud.init({
-      env: CLOUD_ENV
-    });
-
-    wx.cloud.callFunction({
-      name: name,
-      data: data,
-      success: (res) => {
-        if (res.result && res.result.success) {
-          resolve(res.result);
-        } else {
-          resolve(res.result);
-        }
-      },
-      fail: (err) => {
-        console.error('云函数调用失败:', err);
-        reject(err);
-      }
-    });
-  });
+  GET_JOBS: 'jobList',
+  PUBLISH_JOB: 'publishJob',
+  GET_HOT_JOBS: 'jobList',
+  GET_USER_INFO: 'getUserInfo',
+  GET_SERVICES: 'getServices',
+  GET_WORKERS: 'getWorkers',
+  INIT_DATA: 'initData',
+  INIT_SERVICES: 'initServices'
 }
 
 /**
- * 初始化示例数据
- * 首次使用时调用
+ * 调用云函数（统一入口，兼容 Vue3 script setup）
+ * @param {string} name  云函数名称
+ * @param {object} data  参数
+ * @returns {Promise<any>}  resolve res.result
+ */
+export function callCloud(name, data = {}) {
+  return new Promise((resolve, reject) => {
+    // #ifdef MP-WEIXIN
+    if (!wx || !wx.cloud) {
+      reject(new Error('wx.cloud 未初始化，请确认微信基础库版本 >= 2.2.3'))
+      return
+    }
+    wx.cloud.callFunction({
+      name,
+      data,
+      success: (res) => resolve(res.result),
+      fail: (err) => {
+        console.error(`[cloud] ${name} 调用失败:`, err)
+        reject(err)
+      }
+    })
+    // #endif
+
+    // #ifndef MP-WEIXIN
+    // 非微信小程序环境（H5 调试等）直接 resolve 空数据，避免崩溃
+    console.warn(`[cloud] 非微信环境，跳过云函数调用: ${name}`)
+    resolve(null)
+    // #endif
+  })
+}
+
+// 保留旧名称兼容（防止其他地方已 import callCloudFunction）
+export const callCloudFunction = callCloud
+
+/**
+ * 初始化示例数据（首次使用时调用）
  */
 export async function initSampleData() {
   try {
-    await callCloudFunction(CLOUD_FUNCTIONS.INIT_DATA);
-    await callCloudFunction(CLOUD_FUNCTIONS.INIT_SERVICES);
-    console.log('示例数据初始化成功');
+    await callCloud(CLOUD_FUNCTIONS.INIT_DATA)
+    await callCloud(CLOUD_FUNCTIONS.INIT_SERVICES)
+    console.log('示例数据初始化成功')
   } catch (e) {
-    console.error('初始化失败:', e);
+    console.error('初始化失败:', e)
   }
 }

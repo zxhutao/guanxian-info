@@ -41,7 +41,7 @@
         class="house-card"
         @click="toDetail(item.id)"
       >
-        <image class="house-img" :src="item.images[0]" mode="aspectFill" />
+        <image lazy-load class="house-img" :src="item.images[0]" mode="aspectFill" />
         <view class="house-tag" :class="item.type">{{ item.typeText }}</view>
         <view class="house-info">
           <view class="house-title">{{ item.title }}</view>

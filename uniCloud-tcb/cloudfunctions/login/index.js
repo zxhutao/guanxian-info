@@ -29,11 +29,13 @@ exports.main = async (event, context) => {
     console.log('获取到的openid:', openid);
     console.log('获取到的appid:', appid);
 
-    // 开发环境模拟（在微信开发者工具模拟器中 OPENID 为空）
+    // OPENID 为空时直接拒绝（生产环境不允许模拟身份）
     if (!openid) {
-      console.log('OPENID为空，使用模拟openid');
-      openid = 'mock_openid_' + Date.now();
-      appid = 'wx9a6299503beaac19';
+      console.error('OPENID为空，请求被拒绝');
+      return {
+        success: false,
+        msg: '获取用户身份失败，请重新登录'
+      };
     }
 
     // 查询用户是否已存在
@@ -87,12 +89,26 @@ exports.main = async (event, context) => {
       };
     }
 
-    // 生成自定义登录token（实际项目中可使用jwt）
-    const token = Buffer.from(JSON.stringify({
+    // 生成安全的token（包含过期时间和HMAC签名）
+    const tokenData = {
       openid: openid,
       userId: userInfo._id,
-      timestamp: Date.now()
-    })).toString('base64');
+      timestamp: Date.now(),
+      exp: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7天过期
+      version: '1.0'
+    }
+    
+    // 使用HMAC签名防篡改（实际生产环境应使用更安全的密钥管理）
+    const tokenString = JSON.stringify(tokenData)
+    const crypto = require('crypto')
+    // 注意：生产环境应该使用环境变量存储密钥
+    const secretKey = process.env.TOKEN_SECRET || 'guanbangbang-super-secret-key-2026'
+    const signature = crypto.createHmac('sha256', secretKey)
+      .update(tokenString)
+      .digest('hex')
+    
+    // 组合token：base64(data).signature
+    const token = Buffer.from(tokenString).toString('base64') + '.' + signature
 
     return {
       success: true,
@@ -100,8 +116,13 @@ exports.main = async (event, context) => {
         token: token,
         userInfo: {
           _id: userInfo._id,
+          _openid: openid,
           userType: userInfo.userType,
-          profile: userInfo.profile
+          nickname: userInfo.profile?.nickname || '冠帮帮用户',
+          avatar: userInfo.profile?.avatar || '',
+          phone: userInfo.profile?.phone || '',
+          createdAt: userInfo.createdAt,
+          lastLoginTime: userInfo.lastLoginTime
         },
         isNewUser: userRes.data && userRes.data.length === 0
       }

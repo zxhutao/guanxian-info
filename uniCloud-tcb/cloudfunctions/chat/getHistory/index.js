@@ -20,6 +20,19 @@ exports.main = async (event, context) => {
   }
   
   try {
+    // 验证当前用户是否为会话参与者
+    const wxContext = cloud.getWXContext()
+    const openId = wxContext.OPENID
+    if (openId) {
+      const convRes = await db.collection('chat_conversations').where({
+        conversationId: conversationId,
+        participants: _.in([openId])
+      }).get()
+      if (!convRes.data.length) {
+        return { success: false, error: '无权访问该会话' }
+      }
+    }
+
     // 获取消息总数
     const countRes = await db.collection('chat_messages')
       .where({

@@ -105,7 +105,7 @@
     <view class="bottom-actions">
       <view class="action-btn sign" @click="dailySign">
         <u-icon name="clock" size="32rpx" color="#fff" />
-        <text>每日签到</text>
+        <text>{{ signedToday ? '已签到' : '去签到' }}</text>
         <view class="sign-badge" v-if="!signedToday">领积分</view>
       </view>
       <view class="action-btn task" @click="viewTasks">
@@ -118,12 +118,15 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { callCloud } from '@/utils/cloud'
 
-const totalPoints = ref(580)
-const monthEarned = ref(320)
-const monthUsed = ref(100)
+const totalPoints = ref(0)
+const monthEarned = ref(0)
+const monthUsed = ref(0)
 const signedToday = ref(false)
 const currentTab = ref('all')
+const loading = ref(true)
 
 const tabs = [
   { key: 'all', name: '全部' },
@@ -131,16 +134,7 @@ const tabs = [
   { key: 'use', name: '使用' }
 ]
 
-const records = ref([
-  { id: 1, type: 'earn', icon: 'red-packet', title: '完成保洁服务预约', date: '2026-03-20 14:30', points: 50 },
-  { id: 2, type: 'earn', icon: 'clock', title: '每日签到', date: '2026-03-22 09:00', points: 10 },
-  { id: 3, type: 'use', icon: 'coupon', title: '兑换服务优惠券', date: '2026-03-19 16:20', points: -100 },
-  { id: 4, type: 'earn', icon: 'share', title: '分享小程序', date: '2026-03-18 11:30', points: 5 },
-  { id: 5, type: 'earn', icon: 'star', title: '完成护工陪护服务', date: '2026-03-15 18:00', points: 80 },
-  { id: 6, type: 'earn', icon: 'clock', title: '每日签到', date: '2026-03-15 08:30', points: 8 },
-  { id: 7, type: 'earn', icon: 'clock', title: '连续签到奖励', date: '2026-03-15 08:30', points: 15 },
-  { id: 8, type: 'use', icon: 'refresh', title: '刷新职位信息', date: '2026-03-10 10:00', points: -20 }
-])
+const records = ref([])
 
 const filteredRecords = computed(() => {
   if (currentTab.value === 'all') return records.value
@@ -148,30 +142,74 @@ const filteredRecords = computed(() => {
   return records.value.filter(r => r.type === 'use')
 })
 
-const dailySign = () => {
-  if (signedToday.value) {
-    uni.showToast({ title: '今日已签到', icon: 'none' })
-    return
-  }
-  
-  uni.showModal({
-    title: '签到成功',
-    content: `恭喜获得 10 积分！\n连续签到可获得额外奖励哦~`,
-    showCancel: false,
-    success: () => {
-      signedToday.value = true
-      totalPoints.value += 10
-      monthEarned.value += 10
-      records.value.unshift({
-        id: Date.now(),
-        type: 'earn',
-        icon: 'clock',
-        title: '每日签到',
-        date: new Date().toLocaleString('zh-CN'),
-        points: 10
+// 加载积分数据
+const loadPointsData = async () => {
+  loading.value = true
+  try {
+    // 获取积分基本信息
+    const res = await callCloud('checkin', { action: 'getPointsInfo' })
+    if (res && res.code === 0) {
+      const d = res.data
+      totalPoints.value = d.points || 0
+
+      // 获取今日签到状态
+      const statusRes = await callCloud('checkin', { action: 'getCheckinStatus' })
+      if (statusRes && statusRes.code === 0) {
+        signedToday.value = statusRes.data.hasCheckinToday || false
+      }
+
+      // 处理积分明细
+      const logs = d.recentLogs || []
+      const now = new Date()
+      const thisMonth = now.getMonth() + 1
+      const thisYear = now.getFullYear()
+      let earned = 0
+      let used = 0
+
+      records.value = logs.map((log, idx) => {
+        const isEarn = log.points > 0
+        const createTime = log.createTime
+        let dateStr = ''
+        if (createTime) {
+          const d2 = new Date(createTime)
+          dateStr = `${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}-${String(d2.getDate()).padStart(2,'0')} ${String(d2.getHours()).padStart(2,'0')}:${String(d2.getMinutes()).padStart(2,'0')}`
+          // 统计本月
+          if (d2.getFullYear() === thisYear && (d2.getMonth()+1) === thisMonth) {
+            if (isEarn) earned += log.points
+            else used += Math.abs(log.points)
+          }
+        }
+        return {
+          id: log._id || idx,
+          type: isEarn ? 'earn' : 'use',
+          icon: log.type === 'checkin' ? 'clock' : (isEarn ? 'red-packet' : 'coupon'),
+          title: log.title || (isEarn ? '积分获取' : '积分使用'),
+          date: dateStr,
+          points: log.points
+        }
       })
+
+      monthEarned.value = earned
+      monthUsed.value = used
     }
-  })
+  } catch (e) {
+    console.error('加载积分数据失败', e)
+    // 云端失败时尝试读本地缓存
+    const local = uni.getStorageSync('checkin_data')
+    if (local) {
+      totalPoints.value = local.points || 0
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+onShow(() => {
+  loadPointsData()
+})
+
+const dailySign = () => {
+  uni.navigateTo({ url: '/pages/checkin/index' })
 }
 
 const viewTasks = () => {

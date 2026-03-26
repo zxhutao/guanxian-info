@@ -93,6 +93,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import PointDeduct from '../../components/point-deduct/point-deduct.vue'
+import { callCloud } from '@/utils/cloud'
 
 // 置顶时长选项
 const durations = [
@@ -164,19 +165,16 @@ const submitOrder = async () => {
   try {
     // 1. 确认积分抵扣
     if (pointDeduct.value.enabled && pointDeduct.value.usePoints > 0) {
-      const confirmRes = await uniCloud.callFunction({
-        name: 'point-deduct',
-        data: {
-          action: 'confirmDeduct',
-          orderId: 'job_' + Date.now(),
-          usePoints: pointDeduct.value.usePoints,
-          orderAmount: orderAmount.value
-        }
+      const confirmData = await callCloud('point-deduct', {
+        action: 'confirmDeduct',
+        orderId: 'job_' + Date.now(),
+        usePoints: pointDeduct.value.usePoints,
+        orderAmount: orderAmount.value
       })
       
-      if (confirmRes.result.code !== 0) {
+      if (confirmData.code !== 0) {
         uni.showToast({
-          title: confirmRes.result.message || '积分抵扣失败',
+          title: confirmData.message || '积分抵扣失败',
           icon: 'none'
         })
         return
@@ -216,12 +214,9 @@ const submitOrder = async () => {
     
     // 支付失败，回滚积分
     if (pointDeduct.value.enabled && pointDeduct.value.usePoints > 0) {
-      await uniCloud.callFunction({
-        name: 'point-deduct',
-        data: {
-          action: 'cancelDeduct',
-          pointOrderId: 'job_' + Date.now()
-        }
+      await callCloud('point-deduct', {
+        action: 'cancelDeduct',
+        pointOrderId: 'job_' + Date.now()
       })
     }
     

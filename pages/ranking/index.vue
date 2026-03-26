@@ -45,7 +45,7 @@
         <!-- 第二名 -->
         <view class="podium-item second">
           <view class="rank-badge">2</view>
-          <image :src="topProviders[1].avatar" mode="aspectFill" class="podium-avatar" />
+          <image lazy-load :src="topProviders[1].avatar" mode="aspectFill" class="podium-avatar" />
           <text class="podium-name">{{ topProviders[1].name }}</text>
           <view class="podium-rating">
             <text class="stars">★★★★★</text>
@@ -58,7 +58,7 @@
         <view class="podium-item first">
           <view class="crown">👑</view>
           <view class="rank-badge">1</view>
-          <image :src="topProviders[0].avatar" mode="aspectFill" class="podium-avatar" />
+          <image lazy-load :src="topProviders[0].avatar" mode="aspectFill" class="podium-avatar" />
           <text class="podium-name">{{ topProviders[0].name }}</text>
           <view class="podium-rating">
             <text class="stars">★★★★★</text>
@@ -70,7 +70,7 @@
         <!-- 第三名 -->
         <view class="podium-item third">
           <view class="rank-badge">3</view>
-          <image :src="topProviders[2].avatar" mode="aspectFill" class="podium-avatar" />
+          <image lazy-load :src="topProviders[2].avatar" mode="aspectFill" class="podium-avatar" />
           <text class="podium-name">{{ topProviders[2].name }}</text>
           <view class="podium-rating">
             <text class="stars">★★★★★</text>
@@ -97,7 +97,7 @@
         <view class="rank-number" :class="{ top: index < 3 }">
           {{ index + 1 }}
         </view>
-        <image :src="item.avatar" mode="aspectFill" class="item-avatar" />
+        <image lazy-load :src="item.avatar" mode="aspectFill" class="item-avatar" />
         <view class="item-info">
           <view class="item-header">
             <text class="item-name">{{ item.name }}</text>

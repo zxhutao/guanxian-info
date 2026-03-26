@@ -2,7 +2,7 @@
   <view class="review-page">
     <!-- 服务商信息-->
     <view class="provider-card">
-      <image :src="providerInfo.avatar" mode="aspectFill" class="provider-avatar" />
+      <image lazy-load :src="providerInfo.avatar" mode="aspectFill" class="provider-avatar" />
       <view class="provider-info">
         <text class="provider-name">{{ providerInfo.name }}</text>
         <text class="provider-type">{{ providerInfo.type }}</text>
@@ -48,7 +48,7 @@
       <textarea
         v-model="content"
         class="content-input"
-        placeholder="请分享您的真实服务体验，帮助其他冠县老乡避坑避雷，找到靠谱商?.."
+        placeholder="请分享您的真实服务体验，帮助其他冠县老乡避坑避雷，找到靠谱商家.."
         maxlength="500"
       />
       <text class="word-count">{{ content.length }}/500</text>
@@ -63,7 +63,7 @@
           :key="index"
           class="image-item"
         >
-          <image :src="img" mode="aspectFill" />
+          <image lazy-load :src="img" mode="aspectFill" />
           <view class="delete-btn" @click="removeImage(index)">×</view>
         </view>
         <view class="upload-btn" @click="chooseImage" v-if="images.length < 6">
@@ -91,6 +91,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { callCloud } from '@/utils/cloud'
 
 const providerId = ref('')
 const providerType = ref('service')
@@ -132,7 +133,7 @@ onLoad((options) => {
   providerType.value = options.type || 'service'
   orderId.value = options.orderId || ''
   
-  // 加载服务商信?
+  // 加载服务商信息
   loadProviderInfo()
 })
 
@@ -194,27 +195,24 @@ const submitReview = async () => {
     // 上传图片到云存储
     const uploadedImages = []
     for (const img of images.value) {
-      const result = await uniCloud.uploadFile({
+      const result = await wx.cloud.uploadFile({
         cloudPath: `reviews/${Date.now()}_${Math.random().toString(36).substr(2)}.jpg`,
         filePath: img
       })
       uploadedImages.push(result.fileID)
     }
     
-    // 调用云函数提交评?
-    const { result } = await uniCloud.callFunction({
-      name: 'reviews',
+    // 调用云函数提交评价
+    const result = await callCloud('reviews', {
+      action: 'submitReview',
       data: {
-        action: 'submitReview',
-        data: {
-          providerId: providerId.value,
-          providerType: providerType.value,
-          orderId: orderId.value,
-          rating: rating.value,
-          content: content.value,
-          tags: selectedTags.value,
-          images: uploadedImages
-        }
+        providerId: providerId.value,
+        providerType: providerType.value,
+        orderId: orderId.value,
+        rating: rating.value,
+        content: content.value,
+        tags: selectedTags.value,
+        images: uploadedImages
       }
     })
     

@@ -3,7 +3,7 @@
     <!-- 会员卡片 -->
     <view class="member-card">
       <view class="card-header">
-        <image class="avatar" src="/static/images/default-avatar.png" mode="aspectFill" />
+        <image lazy-load class="avatar" src="/static/images/default-avatar.png" mode="aspectFill" />
         <view class="user-info">
           <text class="username">{{ userInfo.name || '冠帮帮用户' }}</text>
           <view class="member-badge" :class="memberLevel">

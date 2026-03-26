@@ -1,7 +1,7 @@
 <template>
   <view class="login-page">
     <view class="logo-section">
-      <image class="logo-img" src="/static/images/logo.png" mode="aspectFit" />
+      <image lazy-load class="logo-img" src="/static/images/logo.png" mode="aspectFit" />
       <text class="app-name">冠帮帮</text>
       <text class="slogan">冠县人必备的生活入口</text>
     </view>

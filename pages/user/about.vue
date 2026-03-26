@@ -2,7 +2,7 @@
   <view class="about-page">
     <!-- Logo和名称 -->
     <view class="app-info">
-      <image class="app-logo" src="/static/images/logo.png" mode="aspectFit" />
+      <image lazy-load class="app-logo" src="/static/images/logo.png" mode="aspectFit" />
       <view class="app-name">冠帮帮</view>
       <view class="app-slogan">冠县人必备的生活入口</view>
       <view class="app-version">版本 1.0.0</view>

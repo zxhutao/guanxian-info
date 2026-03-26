@@ -20,7 +20,16 @@ exports.main = async (event, context) => {
   }
   
   try {
+    // 获取当前用户openId（提前获取，两个分支都会用到）
+    const wxContext = cloud.getWXContext()
+    const openId = wxContext.OPENID
+
     if (messageId) {
+      // 验证消息归属：只能标记发给自己的消息
+      const msgRes = await db.collection('chat_messages').doc(messageId).get()
+      if (msgRes.data && openId && msgRes.data.toId !== openId) {
+        return { success: false, error: '无权操作该消息' }
+      }
       // 标记单条消息已读
       await db.collection('chat_messages').doc(messageId).update({
         data: {
@@ -30,10 +39,6 @@ exports.main = async (event, context) => {
     }
     
     if (conversationId) {
-      // 获取当前用户openId
-      const wxContext = cloud.getWXContext()
-      const openId = wxContext.OPENID
-      
       // 标记会话中所有发给当前用户的消息已读
       await db.collection('chat_messages')
         .where({

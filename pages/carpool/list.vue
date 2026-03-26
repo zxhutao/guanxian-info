@@ -34,7 +34,7 @@
         @click="toDetail(item.id)"
       >
         <view class="card-header">
-          <image class="avatar" :src="item.avatar" mode="aspectFill" />
+          <image lazy-load class="avatar" :src="item.avatar" mode="aspectFill" />
           <view class="user-info">
             <view class="user-name">{{ item.name }}</view>
             <view class="user-meta">

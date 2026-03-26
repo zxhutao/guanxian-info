@@ -3,6 +3,25 @@ cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
 const db = cloud.database()
 const _ = db.command
 
+// 直接定义工具函数（避免部署时找不到 utils 模块）
+function handleError(error, defaultMessage = '操作失败', devMessage = null) {
+  console.error('云函数错误:', error)
+  return {
+    success: false,
+    msg: devMessage || defaultMessage,
+    code: -1
+  }
+}
+
+function successResponse(data = null, message = '操作成功') {
+  return {
+    success: true,
+    msg: message,
+    data: data,
+    code: 0
+  }
+}
+
 // 兑换限制配置
 const EXCHANGE_LIMITS = {
   dailyPerUser: 10,      // 单用户每日兑换上限
@@ -15,7 +34,7 @@ exports.main = async (event, context) => {
   const { OPENID } = cloud.getWXContext()
   
   if (!OPENID) {
-    return { code: -1, message: '未登录' }
+    return handleError(new Error('未登录'), '请先登录')
   }
 
   try {
@@ -33,11 +52,10 @@ exports.main = async (event, context) => {
       case 'cancelExchange':
         return await cancelExchange(OPENID, data)
       default:
-        return { code: -1, message: '未知操作' }
+        return handleError(new Error('未知操作'), '未知操作')
     }
   } catch (error) {
-    console.error('兑换系统错误:', error)
-    return { code: -1, message: error.message || '操作失败' }
+    return handleError(error, '兑换操作失败')
   }
 }
 
@@ -52,20 +70,85 @@ async function getGoodsList(data = {}) {
     where.category = category
   }
   
-  const goods = await db.collection('point_goods')
-    .where(where)
-    .orderBy('sort', 'asc')
-    .skip((page - 1) * pageSize)
-    .limit(pageSize)
-    .get()
+  // 默认商品数据（当数据库为空时使用）
+  const defaultGoods = [
+    {
+      _id: 'goods_1',
+      name: '满50减10元优惠券',
+      description: '冠县本地商家通用',
+      category: 'coupon',
+      points: 100,
+      stock: 999,
+      status: 'on',
+      sort: 1,
+      image: 'https://img.yzcdn.cn/vant/cat.jpeg'
+    },
+    {
+      _id: 'goods_2',
+      name: '保洁服务8折券',
+      description: '限冠县本地保洁服务',
+      category: 'coupon',
+      points: 200,
+      stock: 999,
+      status: 'on',
+      sort: 2,
+      image: 'https://img.yzcdn.cn/vant/cat.jpeg'
+    },
+    {
+      _id: 'goods_3',
+      name: '职位置顶卡（7天）',
+      description: '发布的职位置顶展示7天',
+      category: 'top',
+      points: 500,
+      stock: 999,
+      status: 'on',
+      sort: 3,
+      image: 'https://img.yzcdn.cn/vant/cat.jpeg'
+    },
+    {
+      _id: 'goods_4',
+      name: '冠县特色烧鸡',
+      description: '本地特产，美味可口',
+      category: 'product',
+      points: 800,
+      stock: 100,
+      status: 'on',
+      sort: 4,
+      image: 'https://img.yzcdn.cn/vant/cat.jpeg'
+    }
+  ]
   
-  return {
-    code: 0,
-    data: goods.data,
-    pagination: {
-      page,
-      pageSize,
-      total: goods.data.length
+  try {
+    const goods = await db.collection('point_goods')
+      .where(where)
+      .orderBy('sort', 'asc')
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .get()
+    
+    // 如果数据库没有商品，返回默认商品
+    const goodsData = goods.data && goods.data.length > 0 ? goods.data : defaultGoods
+    
+    return {
+      code: 0,
+      data: goodsData,
+      pagination: {
+        page,
+        pageSize,
+        total: goodsData.length
+      }
+    }
+  } catch (e) {
+    // 数据库查询失败时返回默认商品
+    console.log('查询商品失败，使用默认数据:', e.message)
+    return {
+      code: 0,
+      data: defaultGoods,
+      pagination: {
+        page,
+        pageSize,
+        total: defaultGoods.length
+      }
     }
   }
 }

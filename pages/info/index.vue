@@ -21,7 +21,7 @@
         class="info-card"
         @click="toDetail(item.id)"
       >
-        <image class="info-img" :src="item.image" mode="aspectFill" />
+        <image lazy-load class="info-img" :src="item.image" mode="aspectFill" />
         <view class="info-content">
           <text class="info-title">{{ item.title }}</text>
           <view class="info-footer">

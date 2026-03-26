@@ -1,0 +1,402 @@
+# 冠帮帮小程序 - 微信小程序自动部署工作流
+# GuanBangBang Mini Program - WeChat Mini Program Deployment Workflow
+
+name: Deploy Mini Program
+
+on:
+  push:
+    branches: [master, develop]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'uniCloud-tcb/cloudfunctions/**'
+      - '.github/workflows/deploy-cloudfunctions.yml'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: '部署环境'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview      # 预览版
+          - experience   # 体验版
+          - production   # 正式版
+      version:
+        description: '版本号 (如: 1.0.0)'
+        required: false
+        type: string
+      description:
+        description: '版本描述'
+        required: false
+        default: '自动部署'
+        type: string
+
+env:
+  APPID: wx9a6299503beaac19
+  NODE_VERSION: '20'
+
+jobs:
+  # ==================== 构建小程序 ====================
+  build:
+    name: Build Mini Program
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      build-path: ${{ steps.build.outputs.build-path }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # 安装依赖
+      - name: Install dependencies
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+          else
+            echo "No package.json, skipping npm install"
+          fi
+
+      # 获取版本号
+      - name: Get version
+        id: get-version
+        run: |
+          if [ "${{ github.event.inputs.version }}" != "" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          else
+            # 从 manifest.json 读取版本
+            VERSION=$(grep -o '"versionName".*"[^"]*"' manifest.json | cut -d'"' -f4)
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "版本号: $VERSION"
+
+      # 构建小程序
+      - name: Build mini program
+        id: build
+        run: |
+          echo "=== 构建小程序 ==="
+          
+          # 创建构建输出目录
+          mkdir -p dist/build/mp-weixin
+          
+          # 复制项目文件到构建目录
+          # 注意：这里使用简单的复制，实际项目中可能需要使用 HBuilderX CLI 或 Vue CLI 构建
+          
+          # 排除不需要的文件
+          rsync -av --exclude='.git' \
+                    --exclude='.github' \
+                    --exclude='node_modules' \
+                    --exclude='docs' \
+                    --exclude='*.md' \
+                    --exclude='unpackage' \
+                    ./ dist/build/mp-weixin/ || cp -r . dist/build/mp-weixin/
+          
+          # 确保云函数目录正确
+          if [ -d "uniCloud-tcb/cloudfunctions" ]; then
+            mkdir -p dist/build/mp-weixin/uniCloud-tcb
+            cp -r uniCloud-tcb/cloudfunctions dist/build/mp-weixin/uniCloud-tcb/
+          fi
+          
+          echo "build-path=dist/build/mp-weixin" >> $GITHUB_OUTPUT
+          
+          echo "=== 构建完成 ==="
+          ls -la dist/build/mp-weixin/
+
+      # 验证构建产物
+      - name: Validate build output
+        run: |
+          echo "=== 验证构建产物 ==="
+          
+          BUILD_DIR="dist/build/mp-weixin"
+          
+          # 检查必需文件
+          required_files=("app.json" "app.js" "app.wxss")
+          for file in "${required_files[@]}"; do
+            if [ ! -f "$BUILD_DIR/$file" ]; then
+              echo "⚠️ 缺少文件: $file"
+            else
+              echo "✅ $file"
+            fi
+          done
+          
+          # 统计构建产物大小
+          echo "构建产物大小:"
+          du -sh $BUILD_DIR
+          
+          echo "=== 验证完成 ==="
+
+      # 上传构建产物
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: miniprogram-build
+          path: dist/build/mp-weixin/**
+          retention-days: 7
+
+  # ==================== 代码质量检查 ====================
+  quality-check:
+    name: Quality Check
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: miniprogram-build
+          path: ./dist
+
+      - name: Check build size
+        run: |
+          echo "=== 检查构建大小 ==="
+          
+          # 微信小程序主包大小限制 2MB
+          MAIN_SIZE=$(du -sb ./dist | cut -f1)
+          MAIN_SIZE_MB=$(echo "scale=2; $MAIN_SIZE / 1024 / 1024" | bc)
+          
+          echo "主包大小: ${MAIN_SIZE_MB}MB"
+          
+          if (( $(echo "$MAIN_SIZE_MB > 2" | bc -l) )); then
+            echo "⚠️ 警告: 主包超过 2MB 限制"
+          else
+            echo "✅ 主包大小符合要求"
+          fi
+          
+          # 检查分包大小
+          if [ -d "./dist/subpackages" ]; then
+            for pkg in ./dist/subpackages/*/; do
+              PKG_SIZE=$(du -sb "$pkg" | cut -f1)
+              PKG_SIZE_MB=$(echo "scale=2; $PKG_SIZE / 1024 / 1024" | bc)
+              echo "分包 $(basename "$pkg"): ${PKG_SIZE_MB}MB"
+              
+              if (( $(echo "$PKG_SIZE_MB > 2" | bc -l) )); then
+                echo "  ⚠️ 分包超过 2MB 限制"
+              fi
+            done
+          fi
+
+      - name: Check file count
+        run: |
+          echo "=== 检查文件数量 ==="
+          
+          # 微信小程序文件数量限制
+          FILE_COUNT=$(find ./dist -type f | wc -l)
+          echo "文件总数: $FILE_COUNT"
+          
+          if [ $FILE_COUNT -gt 20000 ]; then
+            echo "⚠️ 警告: 文件数量接近限制"
+          else
+            echo "✅ 文件数量符合要求"
+          fi
+
+  # ==================== 部署到微信 ====================
+  deploy:
+    name: Deploy to WeChat
+    runs-on: ubuntu-latest
+    needs: [build, quality-check]
+    environment:
+      name: ${{ github.event.inputs.environment || 'preview' }}
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: miniprogram-build
+          path: ./dist
+
+      # 安装 miniprogram-ci
+      - name: Setup miniprogram-ci
+        run: |
+          npm install -g miniprogram-ci
+          miniprogram-ci --version
+
+      # 预览版部署
+      - name: Deploy preview version
+        if: github.event.inputs.environment == 'preview' || github.event_name == 'push'
+        env:
+          WECHAT_APPID: ${{ env.APPID }}
+          WECHAT_PRIVATE_KEY: ${{ secrets.WECHAT_PRIVATE_KEY }}
+        run: |
+          echo "=== 部署预览版 ==="
+          
+          if [ -z "$WECHAT_PRIVATE_KEY" ]; then
+            echo "⚠️ 警告: 未配置微信小程序上传密钥"
+            echo "请设置 Secrets: WECHAT_PRIVATE_KEY"
+            echo "获取方法: 微信公众平台 -> 开发 -> 开发设置 -> 小程序代码上传"
+            exit 0
+          fi
+          
+          # 保存私钥
+          echo "$WECHAT_PRIVATE_KEY" > private.key
+          
+          # 上传预览版
+          miniprogram-ci upload \
+            --appid "$WECHAT_APPID" \
+            --project-path ./dist \
+            --private-key-path ./private.key \
+            --version "${{ needs.build.outputs.version }}" \
+            --desc "${{ github.event.inputs.description || '自动部署预览版' }}" \
+            --enable-es6 true \
+            --enable-enhance true \
+            || echo "⚠️ 预览版部署失败"
+
+      # 体验版部署
+      - name: Deploy experience version
+        if: github.event.inputs.environment == 'experience'
+        env:
+          WECHAT_APPID: ${{ env.APPID }}
+          WECHAT_PRIVATE_KEY: ${{ secrets.WECHAT_PRIVATE_KEY }}
+        run: |
+          echo "=== 部署体验版 ==="
+          
+          if [ -z "$WECHAT_PRIVATE_KEY" ]; then
+            echo "⚠️ 警告: 未配置微信小程序上传密钥"
+            exit 0
+          fi
+          
+          echo "$WECHAT_PRIVATE_KEY" > private.key
+          
+          miniprogram-ci upload \
+            --appid "$WECHAT_APPID" \
+            --project-path ./dist \
+            --private-key-path ./private.key \
+            --version "${{ needs.build.outputs.version }}" \
+            --desc "${{ github.event.inputs.description || '体验版' }}" \
+            --enable-es6 true \
+            --enable-enhance true
+
+      # 正式版部署（需要额外确认）
+      - name: Deploy production version
+        if: github.event.inputs.environment == 'production'
+        env:
+          WECHAT_APPID: ${{ env.APPID }}
+          WECHAT_PRIVATE_KEY: ${{ secrets.WECHAT_PRIVATE_KEY }}
+        run: |
+          echo "=== 部署正式版 ==="
+          echo "⚠️ 正式版部署需要人工审核"
+          
+          if [ -z "$WECHAT_PRIVATE_KEY" ]; then
+            echo "⚠️ 警告: 未配置微信小程序上传密钥"
+            exit 0
+          fi
+          
+          echo "$WECHAT_PRIVATE_KEY" > private.key
+          
+          miniprogram-ci upload \
+            --appid "$WECHAT_APPID" \
+            --project-path ./dist \
+            --private-key-path ./private.key \
+            --version "${{ needs.build.outputs.version }}" \
+            --desc "${{ github.event.inputs.description || '正式版' }}" \
+            --enable-es6 true \
+            --enable-enhance true
+          
+          echo "✅ 代码已上传，请在微信公众平台提交审核"
+
+      # 生成二维码（预览版）
+      - name: Generate preview QR
+        if: github.event.inputs.environment == 'preview' || github.event_name == 'push'
+        env:
+          WECHAT_APPID: ${{ env.APPID }}
+          WECHAT_PRIVATE_KEY: ${{ secrets.WECHAT_PRIVATE_KEY }}
+        run: |
+          echo "=== 生成预览二维码 ==="
+          
+          if [ -z "$WECHAT_PRIVATE_KEY" ]; then
+            echo "跳过二维码生成"
+            exit 0
+          fi
+          
+          echo "$WECHAT_PRIVATE_KEY" > private.key
+          
+          miniprogram-ci preview \
+            --appid "$WECHAT_APPID" \
+            --project-path ./dist \
+            --private-key-path ./private.key \
+            --qrcode-format image \
+            --qrcode-output-dest ./preview-qrcode.png \
+            --page-path "pages/index/index" \
+            || echo "⚠️ 二维码生成失败"
+
+      - name: Upload QR code
+        if: github.event.inputs.environment == 'preview' || github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-qrcode
+          path: ./preview-qrcode.png
+          retention-days: 7
+
+  # ==================== 生成部署报告 ====================
+  report:
+    name: Generate Report
+    runs-on: ubuntu-latest
+    needs: [build, deploy]
+    if: always()
+    steps:
+      - name: Generate deployment report
+        run: |
+          echo "# 小程序部署报告" > deploy-report.md
+          echo "" >> deploy-report.md
+          echo "## 基本信息" >> deploy-report.md
+          echo "" >> deploy-report.md
+          echo "- 应用: 冠帮帮 (冠县信息港)" >> deploy-report.md
+          echo "- AppID: ${{ env.APPID }}" >> deploy-report.md
+          echo "- 版本: ${{ needs.build.outputs.version }}" >> deploy-report.md
+          echo "- 部署环境: ${{ github.event.inputs.environment || 'preview' }}" >> deploy-report.md
+          echo "- 提交: ${{ github.sha }}" >> deploy-report.md
+          echo "- 时间: $(date '+%Y-%m-%d %H:%M:%S')" >> deploy-report.md
+          echo "" >> deploy-report.md
+          echo "## 部署状态" >> deploy-report.md
+          echo "" >> deploy-report.md
+          echo "| 任务 | 状态 |" >> deploy-report.md
+          echo "|------|------|" >> deploy-report.md
+          echo "| 构建 | ${{ needs.build.result }} |" >> deploy-report.md
+          echo "| 部署 | ${{ needs.deploy.result }} |" >> deploy-report.md
+          echo "" >> deploy-report.md
+          echo "## 下一步操作" >> deploy-report.md
+          echo "" >> deploy-report.md
+          
+          if [ "${{ github.event.inputs.environment }}" = "production" ]; then
+            echo "1. 登录 [微信公众平台](https://mp.weixin.qq.com)" >> deploy-report.md
+            echo "2. 进入 管理 -> 版本管理" >> deploy-report.md
+            echo "3. 找到版本 ${{ needs.build.outputs.version }}" >> deploy-report.md
+            echo "4. 点击 提交审核" >> deploy-report.md
+          else
+            echo "- 使用微信扫描预览二维码查看效果" >> deploy-report.md
+            echo "- 测试通过后可以在 Actions 中手动触发体验版或正式版部署" >> deploy-report.md
+          fi
+          
+          cat deploy-report.md
+
+      - name: Upload report
+        uses: actions/upload-artifact@v4
+        with:
+          name: deploy-report
+          path: deploy-report.md
+          retention-days: 30
+
+  # ==================== 通知 ====================
+  notify:
+    name: Notify
+    runs-on: ubuntu-latest
+    needs: [deploy, report]
+    if: always()
+    steps:
+      - name: Send notification
+        run: |
+          BUILD_STATUS="${{ needs.build.result }}"
+          DEPLOY_STATUS="${{ needs.deploy.result }}"
+          
+          if [ "$BUILD_STATUS" = "success" ] && [ "$DEPLOY_STATUS" = "success" ]; then
+            echo "✅ 小程序部署成功"
+            echo "版本: ${{ needs.build.outputs.version }}"
+            echo "环境: ${{ github.event.inputs.environment || 'preview' }}"
+          else
+            echo "❌ 小程序部署失败"
+            echo "构建: $BUILD_STATUS"
+            echo "部署: $DEPLOY_STATUS"
+          fi

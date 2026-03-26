@@ -1,9 +1,16 @@
-const db = uniCloud.database()
+const cloud = require('wx-server-sdk')
+cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV })
+const db = cloud.database()
 const dbCmd = db.command
 
 exports.main = async (event, context) => {
   const { action, ...params } = event
-  const { OPENID } = context
+  const wxContext = cloud.getWXContext()
+  const OPENID = wxContext.OPENID
+
+  if (!OPENID) {
+    return { code: -1, message: '未登录，无法操作积分' }
+  }
   
   try {
     switch (action) {
@@ -25,8 +32,8 @@ exports.main = async (event, context) => {
         return { code: -1, message: '未知操作' }
     }
   } catch (e) {
-    console.error(e)
-    return { code: -1, message: e.message || '操作失败' }
+    console.error('积分操作失败:', e)
+    return { code: -1, message: e.message || '积分操作失败' }
   }
 }
 
@@ -45,10 +52,10 @@ async function getUserPoints(openid) {
       updatedAt: new Date()
     }
     await db.collection('user_points').add(initData)
-    return { code: 0, data: initData }
+    return { code: 0, data: initData, message: '获取积分成功' }
   }
   
-  return { code: 0, data: userPoints.data[0] }
+  return { code: 0, data: userPoints.data[0], message: '获取积分成功' }
 }
 
 // 获取积分规则

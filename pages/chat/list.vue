@@ -15,7 +15,7 @@
       >
         <!-- 头像 -->
         <view class="conv-avatar-wrapper">
-          <image :src="conv.avatar || defaultAvatar" mode="aspectFill" class="conv-avatar" />
+          <image lazy-load :src="conv.avatar || defaultAvatar" mode="aspectFill" class="conv-avatar" />
           <!-- 未读角标 -->
           <view class="unread-badge" v-if="conv.unreadCount > 0">
             <text>{{ conv.unreadCount > 99 ? '99+' : conv.unreadCount }}</text>
@@ -76,7 +76,7 @@ onMounted(() => {
 const initUserInfo = async () => {
   // #ifdef MP-WEIXIN
   try {
-    const res = await uniCloud.callFunction({
+    const res = await wx.cloud.callFunction({
       name: 'login'
     })
     if (res.result && res.result.openid) {
@@ -94,7 +94,7 @@ const initUserInfo = async () => {
 const initDatabase = () => {
   // #ifdef MP-WEIXIN
   if (!db) {
-    db = uniCloud.database()
+    db = wx.cloud.database()
     conversationsCollection = db.collection('chat_conversations')
   }
   // #endif
@@ -106,7 +106,7 @@ const loadConversations = async () => {
   
   try {
     // #ifdef MP-WEIXIN
-    const res = await uniCloud.callFunction({
+    const res = await wx.cloud.callFunction({
       name: 'getConversationList'
     })
     
@@ -253,7 +253,7 @@ const goToChat = (conv) => {
 const markAsRead = async (conversationId) => {
   try {
     // #ifdef MP-WEIXIN
-    await uniCloud.callFunction({
+    await wx.cloud.callFunction({
       name: 'markAsRead',
       data: { conversationId }
     })

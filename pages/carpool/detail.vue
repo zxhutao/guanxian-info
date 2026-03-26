@@ -2,7 +2,7 @@
   <view class="detail-page">
     <!-- 司机/乘客信息 -->
     <view class="user-section">
-      <image class="avatar" :src="detail.avatar" mode="aspectFill" />
+      <image lazy-load class="avatar" :src="detail.avatar" mode="aspectFill" />
       <view class="user-info">
         <view class="user-name">{{ detail.name }}</view>
         <view class="user-meta">
@@ -160,7 +160,15 @@ const detail = ref({
 })
 
 const shareTrip = () => {
-  try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
+  enableShareMenu()
+}
+
+const enableShareMenu = () => {
+  // #ifdef MP-WEIXIN
+  uni.showShareMenu({ withShareTicket: true }).catch(() => {
+    // 分享菜单已禁用或出错，静默处理
+  })
+  // #endif
 }
 
 const makeCall = () => {

@@ -2,7 +2,7 @@
   <view class="order-container">
     <!-- 服务信息 -->
     <view class="service-info">
-      <image class="service-image" src="/static/images/service-default.png" mode="aspectFill" />
+      <image lazy-load class="service-image" src="/static/images/service-default.png" mode="aspectFill" />
       <view class="service-detail">
         <text class="service-name">{{ serviceInfo.name }}</text>
         <text class="service-price">¥{{ serviceInfo.price }}/次</text>
@@ -113,6 +113,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import PointDeduct from '../../components/point-deduct/point-deduct.vue'
+import { callCloud } from '@/utils/cloud'
 
 // 服务信息
 const serviceInfo = ref({
@@ -203,19 +204,16 @@ const submitOrder = async () => {
   try {
     // 确认积分抵扣
     if (pointDeduct.value.enabled && pointDeduct.value.usePoints > 0) {
-      const confirmRes = await uniCloud.callFunction({
-        name: 'point-deduct',
-        data: {
-          action: 'confirmDeduct',
-          orderId: 'service_' + Date.now(),
-          usePoints: pointDeduct.value.usePoints,
-          orderAmount: orderAmount.value
-        }
+      const confirmData = await callCloud('point-deduct', {
+        action: 'confirmDeduct',
+        orderId: 'service_' + Date.now(),
+        usePoints: pointDeduct.value.usePoints,
+        orderAmount: orderAmount.value
       })
       
-      if (confirmRes.result.code !== 0) {
+      if (confirmData.code !== 0) {
         uni.showToast({
-          title: confirmRes.result.message || '积分抵扣失败',
+          title: confirmData.message || '积分抵扣失败',
           icon: 'none'
         })
         return
@@ -242,12 +240,9 @@ const submitOrder = async () => {
     
     // 回滚积分
     if (pointDeduct.value.enabled && pointDeduct.value.usePoints > 0) {
-      await uniCloud.callFunction({
-        name: 'point-deduct',
-        data: {
-          action: 'cancelDeduct',
-          pointOrderId: 'service_' + Date.now()
-        }
+      await callCloud('point-deduct', {
+        action: 'cancelDeduct',
+        pointOrderId: 'service_' + Date.now()
       })
     }
     

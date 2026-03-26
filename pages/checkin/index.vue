@@ -130,6 +130,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { onShow } from '@dcloudio/uni-app'
+import { callCloud } from '@/utils/cloud'
 
 // 数据
 const userPoints = ref(0)
@@ -168,28 +169,38 @@ const getYesterdayStr = () => {
 }
 
 // 加载签到状态（使用本地存储）
-const loadCheckinStatus = () => {
+const loadCheckinStatus = async () => {
   try {
+    // 优先从云端获取签到状态和积分
+    try {
+      const data_ = await callCloud('checkin', { action: 'getCheckinStatus' })
+      if (data_ && data_.code === 0) {
+        const data = data_.data
+        userPoints.value = data.points || 0
+        checkinStreak.value = data.streak || 0
+        maxStreak.value = data.maxStreak || 0
+        hasCheckinToday.value = data.hasCheckinToday || false
+      }
+    } catch (e) {
+      console.log('从云端获取签到状态失败，将使用本地数据', e)
+    }
+
     const checkinData = uni.getStorageSync('checkin_data') || {}
     const todayStr = getTodayStr()
     const yesterdayStr = getYesterdayStr()
 
-    userPoints.value = checkinData.points || 0
-    maxStreak.value = checkinData.maxStreak || 0
-
-    // 检查今天是否签到
-    hasCheckinToday.value = checkinData.lastCheckinDate === todayStr
-
-    // 计算连续签到天数
-    if (checkinData.lastCheckinDate === yesterdayStr) {
-      // 昨天签到了，连续天数继续
-      checkinStreak.value = checkinData.streak || 0
-    } else if (checkinData.lastCheckinDate === todayStr) {
-      // 今天签到了
-      checkinStreak.value = checkinData.streak || 0
-    } else {
-      // 没有连续签到，重置
-      checkinStreak.value = 0
+    // 如果云端数据获取失败，使用本地数据
+    if (userPoints.value === 0 && checkinData.points) {
+      userPoints.value = checkinData.points
+    }
+    if (checkinStreak.value === 0 && checkinData.streak) {
+      checkinStreak.value = checkinData.streak
+    }
+    if (maxStreak.value === 0 && checkinData.maxStreak) {
+      maxStreak.value = checkinData.maxStreak
+    }
+    if (!hasCheckinToday.value && checkinData.lastCheckinDate) {
+      hasCheckinToday.value = checkinData.lastCheckinDate === todayStr
     }
 
     // 计算明天的积分
@@ -213,61 +224,65 @@ const saveCheckinData = (data) => {
 }
 
 // 执行签到（使用本地存储）
-const handleCheckin = () => {
+const handleCheckin = async () => {
   if (hasCheckinToday.value || isAnimating.value) return
 
   isAnimating.value = true
 
-  const todayStr = getTodayStr()
-  const yesterdayStr = getYesterdayStr()
+  try {
+    // 调用云函数进行签到
+    const data_ = await callCloud('checkin', { action: 'doCheckin' })
 
-  // 获取当前数据
-  let checkinData = uni.getStorageSync('checkin_data') || {}
+    if (data_ && data_.code === 0) {
+      const data = data_.data
 
-  // 计算连续签到天数
-  let newStreak = 1
-  if (checkinData.lastCheckinDate === yesterdayStr) {
-    newStreak = (checkinData.streak || 0) + 1
+      // 更新UI
+      userPoints.value = userPoints.value + data.points
+      checkinStreak.value = data.streak
+      maxStreak.value = Math.max(maxStreak.value, data.streak)
+      hasCheckinToday.value = true
+
+      // 更新本地存储
+      const checkinData = uni.getStorageSync('checkin_data') || {}
+      const todayStr = getTodayStr()
+
+      const newData = {
+        points: userPoints.value,
+        streak: data.streak,
+        maxStreak: maxStreak.value,
+        lastCheckinDate: todayStr,
+        checkinDates: checkinData.checkinDates || []
+      }
+
+      // 记录签到日期
+      if (!newData.checkinDates.includes(todayStr)) {
+        newData.checkinDates.push(todayStr)
+      }
+
+      saveCheckinData(newData)
+
+      // 显示成功提示
+      uni.showToast({
+        title: `签到成功 +${data.points}积分`,
+        icon: 'success',
+        duration: 2000
+      })
+
+      // 刷新日历
+      generateCalendar()
+    } else {
+      uni.showToast({
+        title: data_?.message || '签到失败',
+        icon: 'none'
+      })
+    }
+  } catch (e) {
+    console.error('签到失败', e)
+    uni.showToast({
+      title: '签到失败，请重试',
+      icon: 'none'
+    })
   }
-
-  // 计算积分
-  let pointsEarned = 10
-  if (newStreak === 7) pointsEarned += 50 // 7天额外奖励
-  if (newStreak === 14) pointsEarned += 40 // 14天额外奖励
-  if (newStreak === 30) pointsEarned += 70 // 30天额外奖励
-
-  // 更新数据
-  const newData = {
-    points: (checkinData.points || 0) + pointsEarned,
-    streak: newStreak,
-    maxStreak: Math.max(checkinData.maxStreak || 0, newStreak),
-    lastCheckinDate: todayStr,
-    checkinDates: checkinData.checkinDates || []
-  }
-
-  // 记录签到日期
-  if (!newData.checkinDates.includes(todayStr)) {
-    newData.checkinDates.push(todayStr)
-  }
-
-  // 保存
-  saveCheckinData(newData)
-
-  // 更新UI
-  userPoints.value = newData.points
-  checkinStreak.value = newStreak
-  maxStreak.value = newData.maxStreak
-  hasCheckinToday.value = true
-
-  // 显示成功提示
-  uni.showToast({
-    title: `签到成功 +${pointsEarned}积分`,
-    icon: 'success',
-    duration: 2000
-  })
-
-  // 刷新日历
-  generateCalendar()
 
   setTimeout(() => {
     isAnimating.value = false

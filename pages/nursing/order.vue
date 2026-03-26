@@ -2,7 +2,7 @@
   <view class="order-container">
     <!-- 护工信息 -->
     <view class="worker-info">
-      <image class="worker-avatar" :src="workerInfo.avatar || '/static/images/avatar-default.png'" mode="aspectFill" />
+      <image lazy-load class="worker-avatar" :src="workerInfo.avatar || '/static/images/avatar-default.png'" mode="aspectFill" />
       <view class="worker-detail">
         <text class="worker-name">{{ workerInfo.name }}</text>
         <text class="worker-price">¥{{ workerInfo.price }}/天</text>
@@ -142,6 +142,7 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import PointDeduct from '../../components/point-deduct/point-deduct.vue'
+import { callCloud } from '@/utils/cloud'
 
 // 护工信息
 const workerInfo = ref({
@@ -243,19 +244,16 @@ const submitOrder = async () => {
   try {
     // 确认积分抵扣
     if (pointDeduct.value.enabled && pointDeduct.value.usePoints > 0) {
-      const confirmRes = await uniCloud.callFunction({
-        name: 'point-deduct',
-        data: {
-          action: 'confirmDeduct',
-          orderId: 'nursing_' + Date.now(),
-          usePoints: pointDeduct.value.usePoints,
-          orderAmount: orderAmount.value
-        }
+      const confirmData = await callCloud('point-deduct', {
+        action: 'confirmDeduct',
+        orderId: 'nursing_' + Date.now(),
+        usePoints: pointDeduct.value.usePoints,
+        orderAmount: orderAmount.value
       })
       
-      if (confirmRes.result.code !== 0) {
+      if (confirmData.code !== 0) {
         uni.showToast({
-          title: confirmRes.result.message || '积分抵扣失败',
+          title: confirmData.message || '积分抵扣失败',
           icon: 'none'
         })
         return
@@ -282,12 +280,9 @@ const submitOrder = async () => {
     
     // 回滚积分
     if (pointDeduct.value.enabled && pointDeduct.value.usePoints > 0) {
-      await uniCloud.callFunction({
-        name: 'point-deduct',
-        data: {
-          action: 'cancelDeduct',
-          pointOrderId: 'nursing_' + Date.now()
-        }
+      await callCloud('point-deduct', {
+        action: 'cancelDeduct',
+        pointOrderId: 'nursing_' + Date.now()
       })
     }
     

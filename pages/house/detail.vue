@@ -3,7 +3,7 @@
     <!-- 图片轮播 -->
     <swiper class="image-swiper" circular indicator-dots>
       <swiper-item v-for="(img, idx) in detail.images" :key="idx">
-        <image class="house-image" :src="img" mode="aspectFill" />
+        <image lazy-load class="house-image" :src="img" mode="aspectFill" />
       </swiper-item>
     </swiper>
 
@@ -162,25 +162,69 @@ const detail = ref({
 })
 
 const isCollected = ref(false)
+const houseId = ref('')
+
+// 加载收藏状态
+const loadCollectStatus = () => {
+  try {
+    const collectList = uni.getStorageSync('collect_house') || []
+    isCollected.value = collectList.some(item => item.id === houseId.value)
+  } catch (e) {
+    console.error('读取收藏状态失败', e)
+  }
+}
 
 // 页面加载时获取房源ID
 onLoad((options) => {
   if (options.id) {
+    houseId.value = options.id
+    loadCollectStatus()
     // 实际项目中这里根据ID请求数据
     // loadDetail(options.id)
   }
 })
 
 const toggleCollect = () => {
-  isCollected.value = !isCollected.value
-  uni.showToast({
-    title: isCollected.value ? '收藏成功' : '已取消收藏',
-    icon: 'none'
-  })
+  try {
+    let collectList = uni.getStorageSync('collect_house') || []
+    
+    if (isCollected.value) {
+      // 已收藏，取消收藏
+      collectList = collectList.filter(item => item.id !== houseId.value)
+      isCollected.value = false
+      uni.showToast({ title: '已取消收藏', icon: 'success' })
+    } else {
+      // 未收藏，添加收藏
+      const houseItem = {
+        id: houseId.value,
+        title: detail.value.title,
+        price: detail.value.price,
+        location: detail.value.location,
+        image: detail.value.images[0],
+        collected: true
+      }
+      collectList.push(houseItem)
+      isCollected.value = true
+      uni.showToast({ title: '收藏成功', icon: 'success' })
+    }
+    
+    uni.setStorageSync('collect_house', collectList)
+  } catch (e) {
+    console.error('收藏操作失败', e)
+    uni.showToast({ title: '操作失败，请重试', icon: 'error' })
+  }
 }
 
 const shareHouse = () => {
-  try { uni.showShareMenu({ withShareTicket: true }) } catch (e) {}
+  enableShareMenu()
+}
+
+const enableShareMenu = () => {
+  // #ifdef MP-WEIXIN
+  uni.showShareMenu({ withShareTicket: true }).catch(() => {
+    // 分享菜单已禁用或出错，静默处理
+  })
+  // #endif
 }
 
 const contactOwner = () => {

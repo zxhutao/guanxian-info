@@ -1,0 +1,6 @@
+{
+  "permissions": {
+    "openapi": ["database.query", "database.add"]
+  },
+  "desc": "获取用户信息云函数"
+}

@@ -50,7 +50,7 @@ async function doCheckin(openid) {
   const todayStr = formatDate(today)
   
   // 检查今天是否已签到
-  const existingCheckin = await db.collection('checkins')
+  const existingCheckin = await db.collection('checkin_records')
     .where({
       _openid: openid,
       date: todayStr
@@ -61,9 +61,27 @@ async function doCheckin(openid) {
     return { code: -1, message: '今天已经签到过了' }
   }
   
-  // 获取用户签到信息
-  const userRes = await db.collection('users').doc(openid).get()
-  const user = userRes.data
+  // 获取用户签到信息（用户不存在时自动创建）
+  let user = {}
+  try {
+    const userRes = await db.collection('users').doc(openid).get()
+    user = userRes.data || {}
+  } catch (e) {
+    // 用户记录不存在，先创建初始记录
+    await db.collection('users').doc(openid).set({
+      data: {
+        _openid: openid,
+        points: 0,
+        totalPoints: 0,
+        checkinStreak: 0,
+        maxStreak: 0,
+        lastCheckinDate: null,
+        createTime: db.serverDate(),
+        updateTime: db.serverDate()
+      }
+    })
+    user = { points: 0, totalPoints: 0, checkinStreak: 0, maxStreak: 0, lastCheckinDate: null }
+  }
   
   // 计算连续签到天数
   let streak = 1
@@ -96,12 +114,61 @@ async function doCheckin(openid) {
   }
   points += bonus
   
+  // 事务外预检查：确保 user_points 文档存在且 _id 为 openid
+  // 注意：必须用 _openid 字段查找，因为 _id 可能不是 openid
+  let userPointsDoc = null
+  try {
+    const ptRes = await db.collection('user_points').where({ _openid: openid }).get()
+    if (ptRes.data && ptRes.data.length > 0) {
+      userPointsDoc = ptRes.data[0]
+      console.log(`[签到调试] 找到已有 user_points 文档: _id=${userPointsDoc._id}`)
+    }
+  } catch (e) { /* 文档不存在 */ }
+
+  if (!userPointsDoc) {
+    // 先删除旧文档（如果有的话，_id 不是 openid 的情况）
+    try {
+      await db.collection('user_points').where({ _openid: openid }).remove()
+      console.log(`[签到调试] 删除旧 user_points 文档`)
+    } catch (e) { /* 删除失败没关系 */ }
+    
+    // 用 set 创建新文档，确保 _id 为 openid
+    // 注意：不能用 add，因为 add 会生成随机 _id
+    await db.collection('user_points').doc(openid).set({
+      data: {
+        _openid: openid,
+        points: 0,
+        totalEarned: 0,
+        totalUsed: 0,
+        level: 1,
+        updatedAt: db.serverDate()
+      }
+    })
+    console.log(`[签到调试] 创建新的 user_points 文档，_id=${openid}`)
+  } else if (userPointsDoc._id !== openid) {
+    // 如果找到文档但 _id 不对，需要重建
+    console.log(`[签到调试] _id 不匹配，需要重建: ${userPointsDoc._id} -> ${openid}`)
+    try {
+      await db.collection('user_points').where({ _openid: openid }).remove()
+    } catch (e) { /* 删除失败 */ }
+    await db.collection('user_points').doc(openid).set({
+      data: {
+        _openid: openid,
+        points: userPointsDoc.points || 0,
+        totalEarned: userPointsDoc.totalEarned || 0,
+        totalUsed: userPointsDoc.totalUsed || 0,
+        level: userPointsDoc.level || 1,
+        updatedAt: db.serverDate()
+      }
+    })
+  }
+
   // 事务：创建签到记录 + 更新用户积分
   const transaction = await db.startTransaction()
   
   try {
     // 1. 创建签到记录
-    await transaction.collection('checkins').add({
+    await transaction.collection('checkin_records').add({
       data: {
         _openid: openid,
         date: todayStr,
@@ -115,34 +182,40 @@ async function doCheckin(openid) {
       }
     })
     
-    // 2. 更新用户积分和签到信息
+    // 2. 更新 users 集合（签到状态/连续天数）
     const userUpdate = {
-      points: _.inc(points),
-      totalPoints: _.inc(points),
       checkinStreak: streak,
       lastCheckinDate: todayStr,
       updateTime: db.serverDate()
     }
-    
-    // 更新最高连续天数
     if (streak > (user?.maxStreak || 0)) {
       userUpdate.maxStreak = streak
     }
-    
     await transaction.collection('users').doc(openid).update({
       data: userUpdate
     })
-    
-    // 3. 创建积分流水
+
+    // 3. 更新 user_points 集合（文档已在事务外确保存在，此处只做 update）
+    console.log(`[签到调试] 更新 user_points: openid=${openid}, points=${points}`)
+    const updateResult = await transaction.collection('user_points').doc(openid).update({
+      data: {
+        points: _.inc(points),
+        totalEarned: _.inc(points),
+        updatedAt: db.serverDate()
+      }
+    })
+    console.log(`[签到调试] user_points 更新结果:`, JSON.stringify(updateResult))
+
+    // 4. 创建积分流水（userId 字段统一，同时保留 _openid）
     await transaction.collection('points_log').add({
       data: {
         _openid: openid,
+        userId: openid,
         type: 'checkin',
         title: `每日签到 +${BASE_POINTS}`,
         points: points,
         bonus: bonus,
         streak: streak,
-        balance: _.inc(points),
         createTime: db.serverDate()
       }
     })
@@ -173,18 +246,26 @@ async function getCheckinStatus(openid) {
   today.setHours(0, 0, 0, 0)
   const todayStr = formatDate(today)
   
-  // 获取用户签到信息
-  const userRes = await db.collection('users').doc(openid).get().catch(() => ({ data: null }))
-  const user = userRes.data || {}
+  // 从 users 集合读签到状态
+  let user = {}
+  try {
+    const userRes = await db.collection('users').doc(openid).get()
+    user = userRes.data || {}
+  } catch (e) {
+    user = {}
+  }
+
+  // 从 user_points 集合读积分余额（与 point-deduct 保持一致）
+  let pointsData = { points: 0, totalEarned: 0 }
+  try {
+    const ptRes = await db.collection('user_points').doc(openid).get()
+    if (ptRes.data) pointsData = ptRes.data
+  } catch (e) { /* 未初始化，保持默认0 */ }
   
   // 检查今天是否已签到
-  const todayCheckin = await db.collection('checkins')
-    .where({
-      _openid: openid,
-      date: todayStr
-    })
+  const todayCheckin = await db.collection('checkin_records')
+    .where({ _openid: openid, date: todayStr })
     .get()
-  
   const hasCheckinToday = todayCheckin.data.length > 0
   
   // 计算明天可获得的积分
@@ -192,14 +273,12 @@ async function getCheckinStatus(openid) {
   let tomorrowStreak = hasCheckinToday ? (user.checkinStreak || 0) + 1 : 1
   
   if (hasCheckinToday) {
-    // 今天已签到，明天是连续+1
     for (const [days, reward] of Object.entries(STREAK_BONUS)) {
       if (tomorrowStreak >= parseInt(days)) {
         tomorrowPoints = BASE_POINTS + reward
       }
     }
   } else {
-    // 今天未签到，检查是否是连续
     const lastDate = user.lastCheckinDate ? new Date(user.lastCheckinDate) : null
     if (lastDate) {
       lastDate.setHours(0, 0, 0, 0)
@@ -221,8 +300,8 @@ async function getCheckinStatus(openid) {
       hasCheckinToday,
       streak: user.checkinStreak || 0,
       maxStreak: user.maxStreak || 0,
-      totalPoints: user.totalPoints || 0,
-      points: user.points || 0,
+      totalPoints: pointsData.totalEarned || 0,
+      points: pointsData.points || 0,
       lastCheckinDate: user.lastCheckinDate || null,
       tomorrowPoints,
       tomorrowStreak,
@@ -239,7 +318,7 @@ async function getCheckinCalendar(openid, data = {}) {
   const { year = new Date().getFullYear(), month = new Date().getMonth() + 1 } = data
   
   // 获取当月签到记录
-  const checkins = await db.collection('checkins')
+  const checkins = await db.collection('checkin_records')
     .where({
       _openid: openid,
       year: year,
@@ -292,10 +371,32 @@ async function getCheckinCalendar(openid, data = {}) {
  * 获取积分信息
  */
 async function getPointsInfo(openid) {
-  const userRes = await db.collection('users').doc(openid).get().catch(() => ({ data: null }))
-  const user = userRes.data || {}
+  console.log(`[积分调试] getPointsInfo called, openid=${openid}`)
   
-  // 获取最近7天积分流水
+  // 从 users 集合读签到状态
+  let user = {}
+  try {
+    const userRes = await db.collection('users').doc(openid).get()
+    user = userRes.data || {}
+    console.log(`[积分调试] users 文档:`, JSON.stringify(user))
+  } catch (e) {
+    user = {}
+    console.log(`[积分调试] users 查询失败:`, e.message)
+  }
+
+  // 从 user_points 集合读积分余额（用 _openid 字段查询，因为 _id 可能不是 openid）
+  let pointsData = { points: 0, totalEarned: 0 }
+  try {
+    const ptRes = await db.collection('user_points').where({ _openid: openid }).get()
+    console.log(`[积分调试] user_points 原始查询:`, JSON.stringify(ptRes))
+    if (ptRes.data && ptRes.data.length > 0) {
+      pointsData = ptRes.data[0]
+    }
+  } catch (e) {
+    console.log(`[积分调试] user_points 查询失败:`, e.message)
+  }
+  
+  // 获取最近20条积分流水（userId 或 _openid 均可匹配）
   const sevenDaysAgo = new Date()
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
   
@@ -311,8 +412,8 @@ async function getPointsInfo(openid) {
   return {
     code: 0,
     data: {
-      points: user.points || 0,
-      totalPoints: user.totalPoints || 0,
+      points: pointsData.points || 0,
+      totalPoints: pointsData.totalEarned || 0,
       checkinStreak: user.checkinStreak || 0,
       maxStreak: user.maxStreak || 0,
       recentLogs: logs.data

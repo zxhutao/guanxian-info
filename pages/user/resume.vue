@@ -2,8 +2,7 @@
   <view class="resume-page">
     <!-- 头像区域 -->
     <view class="avatar-section">
-      <image
-        class="avatar-img"
+      <image lazy-load class="avatar-img"
         :src="resume.avatar || '/static/images/default-avatar.png'"
         mode="aspectFill"
         @click="changeAvatar"
@@ -14,7 +13,7 @@
     <!-- 基本信息 -->
     <view class="section-card">
       <view class="section-title">
-        <u-icon name="account" size="32rpx" color="#E63946" />
+        <text class="icon">👤</text>
         <text>基本信息</text>
       </view>
       <view class="form-list">
@@ -22,35 +21,35 @@
           <text class="form-label">姓名</text>
           <view class="form-value">
             <text :class="{ placeholder: !resume.name }">{{ resume.name || '请填写' }}</text>
-            <u-icon name="arrow-right" size="24rpx" color="#ccc" />
+            <text class="arrow">›</text>
           </view>
         </view>
         <view class="form-item" @click="editField('gender')">
           <text class="form-label">性别</text>
           <view class="form-value">
             <text :class="{ placeholder: !resume.gender }">{{ resume.gender || '请选择' }}</text>
-            <u-icon name="arrow-right" size="24rpx" color="#ccc" />
+            <text class="arrow">›</text>
           </view>
         </view>
         <view class="form-item" @click="editField('age')">
           <text class="form-label">年龄</text>
           <view class="form-value">
             <text :class="{ placeholder: !resume.age }">{{ resume.age ? resume.age + '岁' : '请填写' }}</text>
-            <u-icon name="arrow-right" size="24rpx" color="#ccc" />
+            <text class="arrow">›</text>
           </view>
         </view>
         <view class="form-item" @click="editField('phone')">
           <text class="form-label">联系电话</text>
           <view class="form-value">
             <text :class="{ placeholder: !resume.phone }">{{ resume.phone || '请填写' }}</text>
-            <u-icon name="arrow-right" size="24rpx" color="#ccc" />
+            <text class="arrow">›</text>
           </view>
         </view>
         <view class="form-item" @click="editField('education')">
           <text class="form-label">学历</text>
           <view class="form-value">
             <text :class="{ placeholder: !resume.education }">{{ resume.education || '请选择' }}</text>
-            <u-icon name="arrow-right" size="24rpx" color="#ccc" />
+            <text class="arrow">›</text>
           </view>
         </view>
       </view>
@@ -59,7 +58,7 @@
     <!-- 求职意向 -->
     <view class="section-card">
       <view class="section-title">
-        <u-icon name="briefcase" size="32rpx" color="#E63946" />
+        <text class="icon">💼</text>
         <text>求职意向</text>
       </view>
       <view class="form-list">
@@ -67,28 +66,28 @@
           <text class="form-label">期望职位</text>
           <view class="form-value">
             <text :class="{ placeholder: !resume.expectedJob }">{{ resume.expectedJob || '请填写' }}</text>
-            <u-icon name="arrow-right" size="24rpx" color="#ccc" />
+            <text class="arrow">›</text>
           </view>
         </view>
         <view class="form-item" @click="editField('expectedSalary')">
           <text class="form-label">期望薪资</text>
           <view class="form-value">
             <text :class="{ placeholder: !resume.expectedSalary }">{{ resume.expectedSalary || '请选择' }}</text>
-            <u-icon name="arrow-right" size="24rpx" color="#ccc" />
+            <text class="arrow">›</text>
           </view>
         </view>
         <view class="form-item" @click="editField('workArea')">
           <text class="form-label">工作区域</text>
           <view class="form-value">
             <text :class="{ placeholder: !resume.workArea }">{{ resume.workArea || '请选择' }}</text>
-            <u-icon name="arrow-right" size="24rpx" color="#ccc" />
+            <text class="arrow">›</text>
           </view>
         </view>
         <view class="form-item" @click="editField('jobType')">
           <text class="form-label">工作类型</text>
           <view class="form-value">
             <text :class="{ placeholder: !resume.jobType }">{{ resume.jobType || '请选择' }}</text>
-            <u-icon name="arrow-right" size="24rpx" color="#ccc" />
+            <text class="arrow">›</text>
           </view>
         </view>
       </view>
@@ -97,10 +96,10 @@
     <!-- 工作经历 -->
     <view class="section-card">
       <view class="section-title">
-        <u-icon name="file-text" size="32rpx" color="#E63946" />
+        <text class="icon">📄</text>
         <text>工作经历</text>
-        <view class="add-btn" @click="addExperience('work')">
-          <u-icon name="plus-circle" size="32rpx" color="#E63946" />
+        <view class="add-btn" @click="addExperience">
+          <text class="add-icon">➕</text>
           <text>添加</text>
         </view>
       </view>
@@ -110,7 +109,10 @@
       <view v-for="(exp, index) in resume.workExperience" :key="index" class="exp-card">
         <view class="exp-header">
           <view class="exp-company">{{ exp.company }}</view>
-          <u-icon name="close" size="28rpx" color="#999" @click="removeExperience('work', index)" />
+          <view class="exp-actions">
+            <text class="edit-icon" @click="editExperience(index)">✎</text>
+            <text class="close-icon" @click="removeExperience('work', index)">✕</text>
+          </view>
         </view>
         <view class="exp-row">
           <text class="exp-label">职位：</text>
@@ -127,24 +129,95 @@
       </view>
     </view>
 
+    <!-- 工作经历编辑弹窗 -->
+    <view v-if="expModalVisible" class="modal-mask">
+      <view class="exp-modal">
+        <view class="modal-header">
+          <text class="modal-title">{{ expEditIndex >= 0 ? '编辑工作经历' : '添加工作经历' }}</text>
+          <text class="modal-close" @click="cancelExpForm">✕</text>
+        </view>
+        <view class="modal-body">
+          <view class="modal-field">
+            <text class="modal-label">公司名称 <text class="required">*</text></text>
+            <input
+              class="modal-input"
+              v-model="expForm.company"
+              placeholder="如：冠县某某玻璃厂"
+              maxlength="30"
+              :adjust-position="false"
+            />
+          </view>
+          <view class="modal-field">
+            <text class="modal-label">担任职位 <text class="required">*</text></text>
+            <input
+              class="modal-input"
+              v-model="expForm.position"
+              placeholder="如：普工、质检员、仓管"
+              maxlength="20"
+              :adjust-position="false"
+            />
+          </view>
+          <view class="modal-field">
+            <text class="modal-label">开始时间</text>
+            <input
+              class="modal-input"
+              v-model="expForm.startTime"
+              placeholder="如：2023.06"
+              maxlength="10"
+              :adjust-position="false"
+            />
+          </view>
+          <view class="modal-field">
+            <text class="modal-label">结束时间</text>
+            <input
+              class="modal-input"
+              v-model="expForm.endTime"
+              placeholder="如：2025.12 或 至今"
+              maxlength="10"
+              :adjust-position="false"
+            />
+          </view>
+          <view class="modal-field">
+            <text class="modal-label">工作描述（选填）</text>
+            <textarea
+              class="modal-textarea"
+              v-model="expForm.desc"
+              placeholder="简单描述工作内容和职责..."
+              maxlength="100"
+              :auto-height="true"
+              :adjust-position="false"
+            />
+          </view>
+        </view>
+        <view class="modal-footer">
+          <button class="modal-btn-cancel" @click="cancelExpForm">取消</button>
+          <button class="modal-btn-confirm" @click="confirmExpForm">确定</button>
+        </view>
+      </view>
+    </view>
+
     <!-- 自我介绍 -->
     <view class="section-card">
       <view class="section-title">
-        <u-icon name="edit-pen" size="32rpx" color="#E63946" />
+        <text class="icon">✏️</text>
         <text>自我介绍</text>
       </view>
       <view class="intro-area" @click="editIntro">
         <text v-if="resume.intro" class="intro-text">{{ resume.intro }}</text>
         <text v-else class="placeholder">请填写自我介绍，让企业更了解你...</text>
-        <u-icon name="arrow-right" size="24rpx" color="#ccc" />
+        <text class="arrow">›</text>
       </view>
     </view>
 
     <!-- 底部操作 -->
     <view class="bottom-actions">
-      <u-button type="primary" size="large" @click="saveResume" :loading="saving">
-        保存简历
-      </u-button>
+      <button
+        class="save-btn"
+        :disabled="saving"
+        @click="() => { console.log('按钮被点击了！'); saveResume() }"
+      >
+        {{ saving ? '保存中...' : '保存简历' }}
+      </button>
     </view>
     <view style="height: 140rpx;" />
   </view>
@@ -179,12 +252,25 @@ onShow(() => {
   }
 })
 
-const changeAvatar = () => {
+const changeAvatar = async () => {
   uni.chooseImage({
     count: 1,
     sizeType: ['compressed'],
-    success: (res) => {
-      resume.value.avatar = res.tempFilePaths[0]
+    success: async (res) => {
+      const tempFilePath = res.tempFilePaths[0]
+      resume.value.avatar = tempFilePath // 先显示本地临时图片
+
+      // 上传到云存储（使用微信原生云开发）
+      try {
+        const uploadRes = await wx.cloud.uploadFile({
+          cloudPath: `resume/${Date.now()}.jpg`,
+          filePath: tempFilePath
+        })
+        resume.value.avatar = uploadRes.fileID // 更新为云存储URL
+      } catch (e) {
+        console.error('头像上传失败', e)
+        uni.showToast({ title: '头像上传失败', icon: 'none' })
+      }
     }
   })
 }
@@ -270,32 +356,71 @@ const editIntro = () => {
   })
 }
 
-const addExperience = (type) => {
-  // 简化版：通过弹窗快速添加
-  uni.showModal({
-    title: '添加工作经历',
-    editable: true,
-    placeholderText: '格式：公司名称|职位|开始时间-结束时间\n例：XX玻璃厂|普工|2024.01-2026.03',
-    success: (res) => {
-      if (res.confirm && res.content) {
-        const parts = res.content.split('|')
-        if (parts.length >= 2) {
-          const company = parts[0].trim()
-          const position = parts[1].trim()
-          const timeRange = (parts[2] || '').trim().split('-')
-          resume.value.workExperience.push({
-            company,
-            position,
-            startTime: (timeRange[0] || '').trim(),
-            endTime: (timeRange[1] || '').trim(),
-            desc: (parts[3] || '').trim()
-          })
-        } else {
-          uni.showToast({ title: '格式不正确，请用|分隔', icon: 'none' })
+// 工作经历弹窗状态
+const expModalVisible = ref(false)
+const expEditIndex = ref(-1)
+const expForm = ref({
+  company: '',
+  position: '',
+  startTime: '',
+  endTime: '',
+  desc: ''
+})
+
+const addExperience = () => {
+  expEditIndex.value = -1
+  expForm.value = { company: '', position: '', startTime: '', endTime: '', desc: '' }
+  expModalVisible.value = true
+}
+
+const editExperience = (index) => {
+  expEditIndex.value = index
+  expForm.value = { ...resume.value.workExperience[index] }
+  expModalVisible.value = true
+}
+
+const cancelExpForm = () => {
+  const hasContent = expForm.value.company || expForm.value.position ||
+    expForm.value.startTime || expForm.value.endTime || expForm.value.desc
+  if (hasContent) {
+    uni.showModal({
+      title: '放弃编辑',
+      content: '已填写的内容将不会保存，确定关闭吗？',
+      confirmText: '确定关闭',
+      cancelText: '继续编辑',
+      success: (res) => {
+        if (res.confirm) {
+          expModalVisible.value = false
         }
       }
-    }
-  })
+    })
+  } else {
+    expModalVisible.value = false
+  }
+}
+
+const confirmExpForm = () => {
+  if (!expForm.value.company.trim()) {
+    uni.showToast({ title: '请填写公司名称', icon: 'none' })
+    return
+  }
+  if (!expForm.value.position.trim()) {
+    uni.showToast({ title: '请填写担任职位', icon: 'none' })
+    return
+  }
+  const entry = {
+    company: expForm.value.company.trim(),
+    position: expForm.value.position.trim(),
+    startTime: expForm.value.startTime.trim(),
+    endTime: expForm.value.endTime.trim(),
+    desc: expForm.value.desc.trim()
+  }
+  if (expEditIndex.value >= 0) {
+    resume.value.workExperience[expEditIndex.value] = entry
+  } else {
+    resume.value.workExperience.push(entry)
+  }
+  expModalVisible.value = false
 }
 
 const removeExperience = async (type, index) => {
@@ -306,23 +431,61 @@ const removeExperience = async (type, index) => {
 }
 
 const saveResume = async () => {
+  console.log('========== 开始保存简历 ==========')
+  console.log('简历数据:', JSON.stringify(resume.value, null, 2))
+
   if (!resume.value.name) {
+    console.log('❌ 姓名为空，返回')
     uni.showToast({ title: '请填写姓名', icon: 'none' })
     return
   }
   if (!resume.value.phone) {
+    console.log('❌ 电话为空，返回')
     uni.showToast({ title: '请填写联系电话', icon: 'none' })
     return
   }
 
+  console.log('✅ 必填项验证通过')
   saving.value = true
+  uni.showLoading({ title: '保存中...' })
+
   try {
-    // 模拟保存（实际应上传到云数据库）
+    // 第一步：保存到本地存储
     uni.setStorageSync('myResume', resume.value)
-    await new Promise(resolve => setTimeout(resolve, 800))
+    console.log('✅ 本地存储保存成功')
+
+    // 第二步：上传到云数据库
+    // #ifdef MP-WEIXIN
+    console.log('开始云数据库保存...')
+
+    const db = wx.cloud.database()
+    console.log('✅ 获取数据库实例成功')
+
+    // 直接添加简历，云开发会自动添加 _openid 字段
+    console.log('开始添加新简历...')
+    console.log('准备写入的数据:', {
+      ...resume.value,
+      updateTime: db.serverDate(),
+      createTime: db.serverDate()
+    })
+    const addRes = await db.collection('resumes').add({
+      data: {
+        ...resume.value,
+        updateTime: db.serverDate(),
+        createTime: db.serverDate()
+      }
+    })
+    console.log('✅ 新增简历成功, _id:', addRes._id)
+    // #endif
+
+    console.log('========== 保存完成 ==========')
+    uni.hideLoading() // 先隐藏 loading
     uni.showToast({ title: '保存成功', icon: 'success' })
   } catch (e) {
-    uni.showToast({ title: '保存失败', icon: 'none' })
+    console.error('❌ 保存简历失败:', e)
+    console.error('错误堆栈:', e.stack)
+    uni.hideLoading() // 先隐藏 loading
+    uni.showToast({ title: '保存失败: ' + e.message, icon: 'none' })
   } finally {
     saving.value = false
   }
@@ -363,27 +526,35 @@ const saveResume = async () => {
   padding: 0 30rpx 30rpx;
   margin: 20rpx 0;
 
-  .section-title {
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  padding: 30rpx 0 20rpx;
+  font-size: 32rpx;
+  font-weight: 500;
+  color: #333;
+  border-bottom: 1rpx solid #f5f5f5;
+  margin-bottom: 10rpx;
+
+  .icon {
+    font-size: 32rpx;
+  }
+
+  .add-btn {
+    margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 10rpx;
-    padding: 30rpx 0 20rpx;
-    font-size: 32rpx;
-    font-weight: 500;
-    color: #333;
-    border-bottom: 1rpx solid #f5f5f5;
-    margin-bottom: 10rpx;
+    gap: 6rpx;
+    font-size: 26rpx;
+    color: #E63946;
+    font-weight: normal;
 
-    .add-btn {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 6rpx;
-      font-size: 26rpx;
-      color: #E63946;
-      font-weight: normal;
+    .add-icon {
+      font-size: 32rpx;
     }
   }
+}
 }
 
 .form-list {
@@ -414,6 +585,11 @@ const saveResume = async () => {
       .placeholder {
         color: #ccc;
       }
+
+      .arrow {
+        color: #ccc;
+        font-size: 24rpx;
+      }
     }
   }
 }
@@ -441,6 +617,23 @@ const saveResume = async () => {
       font-size: 30rpx;
       font-weight: 500;
       color: #333;
+    }
+
+    .exp-actions {
+      display: flex;
+      align-items: center;
+      gap: 20rpx;
+    }
+
+    .edit-icon {
+      font-size: 30rpx;
+      color: #E63946;
+    }
+
+    .close-icon {
+      font-size: 28rpx;
+      color: #999;
+      cursor: pointer;
     }
   }
 
@@ -480,9 +673,146 @@ const saveResume = async () => {
     flex: 1;
     line-height: 1.8;
   }
+
+  .arrow {
+    color: #ccc;
+    font-size: 24rpx;
+  }
 }
 
 .bottom-actions {
   padding: 30rpx;
+
+  .save-btn {
+    width: 100%;
+    height: 88rpx;
+    line-height: 88rpx;
+    background: #E63946;
+    color: #fff;
+    border: none;
+    border-radius: 12rpx;
+    font-size: 32rpx;
+    font-weight: 500;
+    text-align: center;
+  }
+
+  .save-btn[disabled] {
+    background: #ccc;
+    opacity: 0.6;
+  }
+}
+
+/* 工作经历弹窗 */
+.modal-mask {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 999;
+  display: flex;
+  align-items: flex-end;
+}
+
+.exp-modal {
+  width: 100%;
+  background: #fff;
+  border-radius: 24rpx 24rpx 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  max-height: 85vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 30rpx 30rpx 20rpx;
+    border-bottom: 1rpx solid #f5f5f5;
+
+    .modal-title {
+      font-size: 32rpx;
+      font-weight: 600;
+      color: #333;
+    }
+
+    .modal-close {
+      font-size: 30rpx;
+      color: #999;
+      padding: 10rpx;
+    }
+  }
+
+  .modal-body {
+    padding: 20rpx 30rpx;
+
+    .modal-field {
+      margin-bottom: 24rpx;
+
+      .modal-label {
+        font-size: 26rpx;
+        color: #666;
+        margin-bottom: 12rpx;
+        display: block;
+
+        .required {
+          color: #E63946;
+          margin-left: 4rpx;
+        }
+      }
+
+      .modal-input {
+        width: 100%;
+        height: 80rpx;
+        background: #F7F7F7;
+        border-radius: 12rpx;
+        padding: 0 24rpx;
+        font-size: 28rpx;
+        color: #333;
+        box-sizing: border-box;
+      }
+
+      .modal-textarea {
+        width: 100%;
+        min-height: 120rpx;
+        background: #F7F7F7;
+        border-radius: 12rpx;
+        padding: 20rpx 24rpx;
+        font-size: 28rpx;
+        color: #333;
+        box-sizing: border-box;
+        line-height: 1.6;
+      }
+    }
+  }
+
+  .modal-footer {
+    display: flex;
+    gap: 20rpx;
+    padding: 20rpx 30rpx 30rpx;
+
+    .modal-btn-cancel {
+      flex: 1;
+      height: 80rpx;
+      line-height: 80rpx;
+      background: #f5f5f5;
+      color: #666;
+      border: none;
+      border-radius: 12rpx;
+      font-size: 30rpx;
+      text-align: center;
+    }
+
+    .modal-btn-confirm {
+      flex: 2;
+      height: 80rpx;
+      line-height: 80rpx;
+      background: #E63946;
+      color: #fff;
+      border: none;
+      border-radius: 12rpx;
+      font-size: 30rpx;
+      font-weight: 500;
+      text-align: center;
+    }
+  }
 }
 </style>

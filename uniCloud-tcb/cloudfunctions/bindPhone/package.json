@@ -1,0 +1,9 @@
+{
+  "name": "bindPhone",
+  "version": "1.0.0",
+  "description": "手机号绑定和验证功能",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "latest"
+  }
+}

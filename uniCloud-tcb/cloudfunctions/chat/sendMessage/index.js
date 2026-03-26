@@ -18,7 +18,7 @@ exports.main = async (event, context) => {
   try {
     // 获取用户信息
     const userRes = await db.collection('users').where({
-      openId: openId
+      _openid: openId
     }).get()
     
     const userInfo = userRes.data[0] || {}

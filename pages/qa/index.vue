@@ -65,7 +65,7 @@
         <!-- 底部信息 -->
         <view class="question-footer">
           <view class="author-info">
-            <image class="avatar" :src="question.author.avatar" mode="aspectFill" />
+            <image lazy-load class="avatar" :src="question.author.avatar" mode="aspectFill" />
             <text class="nickname">{{ question.author.nickname }}</text>
           </view>
           <view class="meta-info">

@@ -84,8 +84,11 @@ const toDetail = (id) => {
   uni.navigateTo({ url: `/pages/service/detail?id=${id}` })
 }
 
+// 编辑服务
 const editService = (id) => {
-  uni.showToast({ title: '编辑功能开发中', icon: 'none' })
+  uni.navigateTo({
+    url: `/subpackages/publish/index?editId=${id}&type=service`
+  })
 }
 
 const deleteService = (item) => {

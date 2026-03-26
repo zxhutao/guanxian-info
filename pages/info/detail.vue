@@ -11,8 +11,7 @@
     </view>
 
     <!-- 文章封面 -->
-    <image
-      v-if="article.cover"
+    <image lazy-load v-if="article.cover"
       class="article-cover"
       :src="article.cover"
       mode="widthFix"
@@ -35,7 +34,7 @@
           class="related-item"
           @click="toRelated(item.id)"
         >
-          <image class="related-image" :src="item.image" mode="aspectFill" />
+          <image lazy-load class="related-image" :src="item.image" mode="aspectFill" />
           <view class="related-info">
             <view class="related-title">{{ item.title }}</view>
             <view class="related-time">{{ item.time }}</view>

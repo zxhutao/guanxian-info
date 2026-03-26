@@ -24,10 +24,10 @@
       <text class="question-content">{{ question.content }}</text>
 
       <!-- 提问者信息 -->
-      <view class="author-section">
-        <image class="avatar" :src="question.author.avatar" mode="aspectFill" />
+      <view class="author-section" v-if="question.author">
+        <image lazy-load class="avatar" :src="question.author?.avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
         <view class="author-info">
-          <text class="nickname">{{ question.author.nickname }}</text>
+          <text class="nickname">{{ question.author?.nickname || '匿名用户' }}</text>
           <text class="time">发布于 {{ formatTime(question.createTime) }}</text>
         </view>
       </view>
@@ -54,9 +54,9 @@
 
         <!-- 回答者信息 -->
         <view class="answer-header">
-          <image class="avatar" :src="answer.author.avatar" mode="aspectFill" />
+          <image lazy-load class="avatar" :src="answer.author?.avatar || '/static/images/default-avatar.png'" mode="aspectFill" />
           <view class="author-info">
-            <text class="nickname">{{ answer.author.nickname }}</text>
+            <text class="nickname">{{ answer.author?.nickname || '匿名用户' }}</text>
             <text class="time">{{ formatTime(answer.createTime) }}</text>
           </view>
         </view>
@@ -160,6 +160,9 @@ const loadData = () => {
       if (b.isBest) return 1
       return b.likes - a.likes
     })
+  } else {
+    question.value = {}
+    answers.value = []
   }
 }
 

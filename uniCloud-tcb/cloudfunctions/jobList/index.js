@@ -1,13 +1,11 @@
 'use strict';
 
+const cloud = require('wx-server-sdk');
+cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
+const db = cloud.database();
+const _ = db.command;
+
 exports.main = async (event, context) => {
-  const cloud = require('wx-server-sdk');
-  cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
-
-  const db = cloud.database();
-  const _ = db.command;
-
-  // 获取参数
   const { page = 1, pageSize = 10, category = '', keyword = '' } = event;
 
   // 构建查询条件
@@ -26,30 +24,39 @@ exports.main = async (event, context) => {
     });
   }
 
-  // 查询数据库
-  const countResult = await db.collection('jobs').where(where).count();
-  const total = countResult.total;
+  try {
+    // 查询总数
+    const countResult = await db.collection('jobs').where(where).count();
+    const total = countResult.total;
 
-  const list = await db.collection('jobs')
-    .where(where)
-    .orderBy('createTime', 'desc')
-    .skip((page - 1) * pageSize)
-    .limit(pageSize)
-    .field({
-      title: true,
-      company: true,
-      salary: true,
-      location: true,
-      tags: true,
-      createTime: true
-    })
-    .get();
+    // 查询列表
+    const list = await db.collection('jobs')
+      .where(where)
+      .orderBy('createTime', 'desc')
+      .skip((page - 1) * pageSize)
+      .limit(pageSize)
+      .field({
+        title: true,
+        company: true,
+        salary: true,
+        location: true,
+        tags: true,
+        createTime: true
+      })
+      .get();
 
-  return {
-    success: true,
-    data: list.data,
-    total: total,
-    page: page,
-    pageSize: pageSize
-  };
+    return {
+      success: true,
+      data: list.data,
+      total: total,
+      page: page,
+      pageSize: pageSize
+    };
+  } catch (e) {
+    console.error('[jobList] 查询失败:', e);
+    return {
+      success: false,
+      error: e.message || '查询失败'
+    };
+  }
 };

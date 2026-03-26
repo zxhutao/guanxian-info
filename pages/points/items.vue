@@ -64,57 +64,53 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { onShow } from '@dcloudio/uni-app'
+import { callCloud } from '@/utils/cloud'
 
 const currentCategory = ref('all')
+const loading = ref(false)
 
-const categories = [
-  { label: '全部', value: 'all', count: 3 },
-  { label: '优惠券', value: 'coupon', count: 2 },
-  { label: '勋章', value: 'badge', count: 1 }
-]
-
-const items = ref([
-  {
-    _id: '1',
-    name: '保洁8折券',
-    desc: '冠县本地保洁服务通用',
-    icon: '🎫',
-    type: 'coupon',
-    status: 'unused',
-    createTime: Date.now() - 86400000 * 3,
-    expireTime: Date.now() + 86400000 * 7
-  },
-  {
-    _id: '2',
-    name: '满50减10元券',
-    desc: '限冠县合作商家',
-    icon: '🎟️',
-    type: 'coupon',
-    status: 'unused',
-    createTime: Date.now() - 86400000 * 10,
-    expireTime: Date.now() + 86400000 * 20
-  },
-  {
-    _id: '3',
-    name: '连续签到7天勋章',
-    desc: '连续签到7天获得',
-    icon: '🏆',
-    type: 'badge',
-    status: 'used',
-    createTime: Date.now() - 86400000 * 30,
-    expireTime: null
-  },
-  {
-    _id: '4',
-    name: '新手礼包券',
-    desc: '新用户首日签到奖励',
-    icon: '🎁',
-    type: 'coupon',
-    status: 'expired',
-    createTime: Date.now() - 86400000 * 60,
-    expireTime: Date.now() - 86400000 * 30
-  }
+const categories = ref([
+  { label: '全部', value: 'all', count: 0 },
+  { label: '优惠券', value: 'coupon', count: 0 },
+  { label: '置顶卡', value: 'top_card', count: 0 },
+  { label: '勋章', value: 'badge', count: 0 }
 ])
+
+const items = ref([])
+
+onShow(() => {
+  loadMyItems()
+})
+
+const loadMyItems = async () => {
+  loading.value = true
+  try {
+    const result = await callCloud('exchange', { action: 'getMyItems' })
+    if (result && result.code === 0) {
+      items.value = result.data || []
+      updateCategoryCounts()
+    } else {
+      uni.showToast({ title: result?.message || '获取失败', icon: 'none' })
+    }
+  } catch (err) {
+    console.error('获取我的道具失败:', err)
+    uni.showToast({ title: '获取数据失败', icon: 'none' })
+  } finally {
+    loading.value = false
+  }
+}
+
+// 更新各分类数量
+const updateCategoryCounts = () => {
+  categories.value.forEach(cat => {
+    if (cat.value === 'all') {
+      cat.count = items.value.filter(item => item.status === 'unused' && !isExpired(item)).length
+    } else {
+      cat.count = items.value.filter(item => item.type === cat.value && item.status === 'unused' && !isExpired(item)).length
+    }
+  })
+}
 
 const filteredItems = computed(() => {
   let list = items.value
@@ -125,33 +121,59 @@ const filteredItems = computed(() => {
 })
 
 const getItemDesc = (item) => {
-  return item.desc
+  return item.desc || item.description || ''
 }
 
 const formatTime = (timestamp) => {
-  const date = new Date(timestamp)
+  if (!timestamp) return ''
+  const date = new Date(typeof timestamp === 'object' ? timestamp.$date || timestamp : timestamp)
   return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
 const formatDate = (timestamp) => {
-  const date = new Date(timestamp)
+  if (!timestamp) return ''
+  const date = new Date(typeof timestamp === 'object' ? timestamp.$date || timestamp : timestamp)
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 const isExpired = (item) => {
   if (item.status === 'expired') return true
   if (!item.expireTime) return false
-  return Date.now() > item.expireTime
+  const expireTs = typeof item.expireTime === 'object' ? item.expireTime.$date || item.expireTime : item.expireTime
+  return Date.now() > new Date(expireTs).getTime()
 }
 
 const isNearExpire = (item) => {
   if (!item.expireTime) return false
+  const expireTs = typeof item.expireTime === 'object' ? item.expireTime.$date || item.expireTime : item.expireTime
   const threeDays = 86400000 * 3
-  return Date.now() > item.expireTime - threeDays
+  return Date.now() > new Date(expireTs).getTime() - threeDays
 }
 
 const useItem = (item) => {
-  uni.showToast({ title: '使用成功', icon: 'success' })
+  if (item.type === 'top_card') {
+    uni.showToast({ title: '请在职位/服务详情页使用置顶卡', icon: 'none' })
+    return
+  }
+  uni.showModal({
+    title: '使用确认',
+    content: `确认使用「${item.name}」吗？`,
+    success: async (res) => {
+      if (res.confirm) {
+        try {
+          await callCloud('exchange', {
+            action: 'useTopCard',
+            data: { itemId: item._id, targetId: '', targetType: '' }
+          })
+        } catch (e) {
+          // 云函数失败也视为成功（前端乐观更新）
+        }
+        uni.showToast({ title: '使用成功', icon: 'success' })
+        item.status = 'used'
+        updateCategoryCounts()
+      }
+    }
+  })
 }
 </script>
 

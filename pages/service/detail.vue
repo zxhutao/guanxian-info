@@ -2,7 +2,7 @@
   <view class="detail-page">
     <!-- 顶部图片 -->
     <view class="header-image">
-      <image :src="serviceInfo.image" mode="aspectFill" />
+      <image lazy-load :src="serviceInfo.image" mode="aspectFill" />
       <view class="header-overlay">
         <text class="service-type">{{ categoryName }}</text>
       </view>
@@ -11,7 +11,7 @@
     <!-- 服务商信息 -->
     <view class="provider-card">
       <view class="provider-header">
-        <image :src="serviceInfo.avatar" mode="aspectFill" class="provider-avatar" />
+        <image lazy-load :src="serviceInfo.avatar" mode="aspectFill" class="provider-avatar" />
         <view class="provider-info">
           <view class="provider-name-row">
             <text class="provider-name">{{ serviceInfo.name }}</text>
@@ -23,8 +23,8 @@
             <text class="orders">{{ serviceInfo.orderCount }}次服务</text>
           </view>
         </view>
-        <view class="contact-btn" @click="contactProvider">
-          <text>联系</text>
+        <view class="contact-btn" @click="handleChat">
+          <text>咨询</text>
         </view>
       </view>
     </view>
@@ -58,6 +58,23 @@
       </view>
     </view>
 
+    <!-- 服务地址 -->
+    <view v-if="serviceInfo.latitude && serviceInfo.longitude" class="section">
+      <view class="section-title">
+        <text>服务地址</text>
+      </view>
+      <view class="location-card" @click="openLocation">
+        <view class="location-info">
+          <text class="location-icon">📍</text>
+          <text class="location-text">{{ serviceInfo.address || serviceInfo.location }}</text>
+        </view>
+        <view class="map-btn">
+          <text>查看地图</text>
+          <text class="arrow">›</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 用户评价 -->
     <view class="section">
       <view class="section-title">
@@ -67,7 +84,7 @@
       <view class="reviews">
         <view v-for="(review, index) in serviceInfo.reviews" :key="index" class="review-item">
           <view class="review-header">
-            <image :src="review.avatar" class="review-avatar" />
+            <image lazy-load :src="review.avatar" class="review-avatar" />
             <view class="review-info">
               <text class="review-name">{{ review.name }}</text>
               <text class="review-stars">★★★★★</text>
@@ -186,9 +203,34 @@ const serviceInfo = ref({
   orderCount: 856,
   isVerified: true,
   description: '专业服务商，提供优质的生活服务...',
+  location: '冠县城区',
+  address: '山东省聊城市冠县',
+  latitude: '36.48',
+  longitude: '115.56',
   items: [],
   reviews: []
 })
+
+// 打开地图导航
+const openLocation = () => {
+  if (!serviceInfo.value.latitude || !serviceInfo.value.longitude) {
+    uni.showToast({ title: '位置信息有误', icon: 'none' })
+    return
+  }
+  uni.openLocation({
+    name: serviceInfo.value.name,
+    address: serviceInfo.value.address || serviceInfo.value.location,
+    latitude: parseFloat(serviceInfo.value.latitude),
+    longitude: parseFloat(serviceInfo.value.longitude),
+    success: () => {
+      console.log('打开地图成功')
+    },
+    fail: (err) => {
+      console.error('打开地图失败', err)
+      uni.showToast({ title: '打开地图失败', icon: 'none' })
+    }
+  })
+}
 
 const loadServiceInfo = () => {
   const dataMap = {
@@ -320,6 +362,21 @@ const loadServiceInfo = () => {
   }
 }
 
+// 联系服务商/咨询
+const handleChat = () => {
+  // 构建会话ID
+  const userInfo = uni.getStorageSync('userInfo') || {}
+  const userId = userInfo.openId || 'guest_' + Date.now()
+  const providerId = serviceInfo.value.name || 'provider_default'
+  const conversationId = `conv_${userId}_${providerId}`
+  
+  // 跳转到聊天页面
+  uni.navigateTo({
+    url: `/pages/chat/index?conversationId=${conversationId}&name=${encodeURIComponent(serviceInfo.value.name)}&avatar=${encodeURIComponent(serviceInfo.value.avatar)}&toId=${providerId}`
+  })
+}
+
+// 拨打电话
 const contactProvider = () => {
   uni.makePhoneCall({
     phoneNumber: '400-888-8888',
@@ -327,6 +384,10 @@ const contactProvider = () => {
       uni.showToast({ title: '拨打失败', icon: 'none' })
     }
   })
+}
+
+const goToReview = () => {
+  uni.navigateTo({ url: '/pages/review/submit?type=service&id=' + (serviceId.value || category.value) })
 }
 
 const bookService = () => {
@@ -528,6 +589,45 @@ onShareTimeline(() => {
   color: #666;
   line-height: 1.8;
   white-space: pre-line;
+}
+
+// 服务地址卡片
+.location-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 24rpx;
+  background: #f0f9ff;
+  border-radius: 12rpx;
+  border: 1rpx solid #91d5ff;
+
+  .location-info {
+    display: flex;
+    align-items: center;
+    flex: 1;
+
+    .location-icon {
+      font-size: 36rpx;
+      margin-right: 16rpx;
+    }
+
+    .location-text {
+      font-size: 28rpx;
+      color: #333;
+    }
+  }
+
+  .map-btn {
+    display: flex;
+    align-items: center;
+    color: #1890ff;
+    font-size: 28rpx;
+
+    .arrow {
+      font-size: 36rpx;
+      margin-left: 4rpx;
+    }
+  }
 }
 
 .reviews {
