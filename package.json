@@ -1,0 +1,12 @@
+{
+  "name": "guanxian-info",
+  "version": "1.0.0",
+  "description": "冠县信息港小程序",
+  "main": "main.js",
+  "scripts": {
+    "dev": "echo 'Please use HBuilderX to run this project'",
+    "build": "echo 'Please use HBuilderX to build this project'"
+  },
+  "dependencies": {},
+  "devDependencies": {}
+}

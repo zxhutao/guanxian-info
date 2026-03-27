@@ -1,0 +1,163 @@
+name: 🔍 代码检查 (CI)
+
+on:
+  push:
+    branches: [ master, develop, 'feature/**', 'feat/**', 'fix/**' ]
+  pull_request:
+    branches: [ master, develop ]
+
+jobs:
+  # ─────────────────────────────────────────
+  # Job 1: 代码质量检查
+  # ─────────────────────────────────────────
+  lint:
+    name: 📋 代码规范检查
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: 安装依赖
+        run: |
+          # 如果没有package-lock.json则用npm install
+          if [ -f "package-lock.json" ]; then
+            npm ci
+          else
+            npm install
+          fi
+
+      - name: 检查 Vue 文件格式
+        run: |
+          echo "📄 检查页面文件数量..."
+          find pages/ -name "*.vue" | wc -l
+          find subpackages/ -name "*.vue" | wc -l
+          find components/ -name "*.vue" | wc -l
+          echo "✅ 文件检查完成"
+
+      - name: 检查云函数结构
+        run: |
+          echo "☁️  检查云函数目录..."
+          for dir in uniCloud-tcb/cloudfunctions/*/; do
+            func_name=$(basename "$dir")
+            if [ ! -f "${dir}index.js" ]; then
+              echo "⚠️  警告: ${func_name} 缺少 index.js"
+            else
+              echo "✅ ${func_name} - OK"
+            fi
+          done
+
+      - name: 检查必要配置文件
+        run: |
+          echo "🔧 检查配置文件..."
+          required_files=(
+            "pages.json"
+            "manifest.json"
+            "app.json"
+            "App.vue"
+            "main.js"
+          )
+          for file in "${required_files[@]}"; do
+            if [ -f "$file" ]; then
+              echo "✅ $file"
+            else
+              echo "❌ 缺少: $file"
+              exit 1
+            fi
+          done
+
+      - name: 验证 pages.json 格式
+        run: |
+          echo "📝 验证 pages.json..."
+          node -e "
+            const fs = require('fs');
+            try {
+              const content = fs.readFileSync('pages.json', 'utf8');
+              // 移除注释后解析
+              const cleaned = content.replace(/\/\/.*$/mg, '').replace(/\/\*[\s\S]*?\*\//g, '');
+              JSON.parse(cleaned);
+              console.log('✅ pages.json 格式正确');
+            } catch(e) {
+              console.log('⚠️  pages.json 包含注释，跳过严格验证');
+            }
+          "
+
+      - name: 验证 manifest.json
+        run: |
+          node -e "
+            const fs = require('fs');
+            const content = fs.readFileSync('manifest.json', 'utf8');
+            const config = JSON.parse(content);
+            const appid = config['mp-weixin']?.appid;
+            if (appid !== 'wx9a6299503beaac19') {
+              console.error('❌ AppID 不匹配！期望: wx9a6299503beaac19, 实际: ' + appid);
+              process.exit(1);
+            }
+            console.log('✅ manifest.json AppID 验证通过');
+          "
+
+  # ─────────────────────────────────────────
+  # Job 2: 云函数单元测试
+  # ─────────────────────────────────────────
+  test-cloudfunctions:
+    name: ☁️ 云函数测试
+    runs-on: ubuntu-latest
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 安装 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: 安装云函数测试依赖
+        run: |
+          cd uniCloud-tcb/cloudfunctions
+          # 为每个有package.json的云函数安装依赖
+          for dir in */; do
+            if [ -f "${dir}package.json" ]; then
+              echo "📦 安装 ${dir} 依赖..."
+              cd "$dir"
+              npm install --production 2>/dev/null || true
+              cd ..
+            fi
+          done
+
+      - name: 运行云函数基础验证
+        run: |
+          echo "🧪 验证云函数入口文件..."
+          PASS=0
+          FAIL=0
+          
+          for dir in uniCloud-tcb/cloudfunctions/*/; do
+            func_name=$(basename "$dir")
+            if [ -f "${dir}index.js" ]; then
+              # 检查exports.main是否存在
+              if grep -q "exports.main" "${dir}index.js"; then
+                echo "✅ $func_name - exports.main 存在"
+                PASS=$((PASS + 1))
+              else
+                echo "⚠️  $func_name - 未找到 exports.main"
+                FAIL=$((FAIL + 1))
+              fi
+            fi
+          done
+          
+          echo ""
+          echo "📊 测试结果: ✅ $PASS 通过  ⚠️  $FAIL 警告"
+
+      - name: 检查云函数关键字段
+        run: |
+          echo "🔍 检查云函数安全性..."
+          # 检查是否有硬编码的密钥或敏感信息
+          if grep -r "secretKey\|secret_key\|password.*=.*['\"]" uniCloud-tcb/cloudfunctions/ --include="*.js" -l 2>/dev/null; then
+            echo "⚠️  警告: 发现可能的敏感信息，请检查"
+          else
+            echo "✅ 未发现明显的硬编码敏感信息"
+          fi

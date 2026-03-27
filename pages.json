@@ -134,6 +134,18 @@
       }
     },
     {
+      "path": "pages/user/agreement",
+      "style": {
+        "navigationBarTitleText": "用户服务协议"
+      }
+    },
+    {
+      "path": "pages/user/privacy",
+      "style": {
+        "navigationBarTitleText": "隐私政策"
+      }
+    },
+    {
       "path": "pages/user/coupon",
       "style": {
         "navigationBarTitleText": "优惠券"

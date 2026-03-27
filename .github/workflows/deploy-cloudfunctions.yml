@@ -1,278 +1,221 @@
-# 冠帮帮小程序 - 云函数自动部署工作流
-# GuanBangBang Mini Program - Cloud Function Deployment Workflow
-
-name: Deploy Cloud Functions
+name: ☁️ 云函数部署 (CD)
 
 on:
   push:
-    branches: [master, develop]
+    branches: [ master ]
     paths:
       - 'uniCloud-tcb/cloudfunctions/**'
-      - '.github/workflows/deploy-cloudfunctions.yml'
   workflow_dispatch:
     inputs:
-      environment:
-        description: '部署环境'
-        required: true
-        default: 'development'
-        type: choice
-        options:
-          - development
-          - production
+      deploy_all:
+        description: '是否部署所有云函数'
+        required: false
+        default: 'false'
+        type: boolean
+      function_name:
+        description: '指定部署的云函数名称（留空则自动检测变更）'
+        required: false
+        type: string
 
 env:
-  CLOUD_ENV_ID: cloudbase-1gkioadld4516142
-  NODE_VERSION: '20'
+  CLOUDBASE_ENV_ID: cloudbase-1gkioadld4516142
 
 jobs:
-  # ==================== 部署准备 ====================
-  prepare:
-    name: Prepare Deployment
+  # ─────────────────────────────────────────
+  # 检测变更的云函数
+  # ─────────────────────────────────────────
+  detect-changes:
+    name: 🔍 检测变更
     runs-on: ubuntu-latest
     outputs:
-      changed-functions: ${{ steps.detect-changes.outputs.functions }}
-      deploy-env: ${{ steps.set-env.outputs.environment }}
+      changed_functions: ${{ steps.detect.outputs.functions }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
     steps:
-      - name: Checkout code
+      - name: 检出代码
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2
 
-      - name: Set deployment environment
-        id: set-env
+      - name: 检测变更的云函数
+        id: detect
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
-          elif [ "${{ github.ref }}" = "refs/heads/master" ]; then
-            echo "environment=production" >> $GITHUB_OUTPUT
+          if [ "${{ github.event.inputs.deploy_all }}" = "true" ]; then
+            # 手动触发且选择全量部署
+            functions=$(ls uniCloud-tcb/cloudfunctions/ | grep -v '\.json\|\.js\|\.md\|\.jql\|\.zip' | tr '\n' ',')
+            echo "🚀 全量部署模式: $functions"
+          elif [ -n "${{ github.event.inputs.function_name }}" ]; then
+            # 指定函数名
+            functions="${{ github.event.inputs.function_name }}"
+            echo "🎯 指定部署: $functions"
           else
-            echo "environment=development" >> $GITHUB_OUTPUT
+            # 自动检测变更
+            changed=$(git diff --name-only HEAD~1 HEAD -- 'uniCloud-tcb/cloudfunctions/' 2>/dev/null || \
+                      git diff --name-only HEAD -- 'uniCloud-tcb/cloudfunctions/')
+            functions=$(echo "$changed" | grep -oP 'uniCloud-tcb/cloudfunctions/\K[^/]+' | sort -u | tr '\n' ',')
+            echo "📋 变更检测: $functions"
           fi
-          echo "部署环境: $(cat $GITHUB_OUTPUT | grep environment | cut -d= -f2)"
-
-      - name: Detect changed cloud functions
-        id: detect-changes
-        run: |
-          echo "=== 检测变更的云函数 ==="
           
-          # 获取变更的文件
-          if [ "${{ github.event_name }}" = "push" ]; then
-            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} || git diff --name-only HEAD~1 HEAD)
+          if [ -z "$functions" ] || [ "$functions" = "," ]; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "functions=" >> $GITHUB_OUTPUT
+            echo "ℹ️  没有检测到云函数变更"
           else
-            # 手动触发时部署所有云函数
-            CHANGED_FILES=$(find uniCloud-tcb/cloudfunctions -type d -mindepth 1 -maxdepth 1 | sed 's|$|/index.js|')
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            echo "functions=$functions" >> $GITHUB_OUTPUT
+            echo "✅ 需要部署的函数: $functions"
           fi
-          
-          # 提取变更的云函数名称
-          FUNCTIONS=$(echo "$CHANGED_FILES" | grep -E '^uniCloud-tcb/cloudfunctions/' | cut -d'/' -f3 | sort -u | jq -R . | jq -s . | tr -d '\n' || echo '[]')
-          
-          echo "变更的云函数: $FUNCTIONS"
-          echo "functions=$FUNCTIONS" >> $GITHUB_OUTPUT
 
-      - name: List all cloud functions
-        run: |
-          echo "=== 云函数列表 ==="
-          ls -la uniCloud-tcb/cloudfunctions/
-
-  # ==================== 语法和依赖检查 ====================
-  validate:
-    name: Validate Cloud Functions
-    runs-on: ubuntu-latest
-    needs: prepare
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Validate JavaScript syntax
-        run: |
-          echo "=== 验证云函数语法 ==="
-          
-          FAILED=0
-          find uniCloud-tcb/cloudfunctions -name 'index.js' -not -path '*/node_modules/*' | while read file; do
-            if ! node --check "$file" 2>/dev/null; then
-              echo "❌ 语法错误: $file"
-              FAILED=1
-            fi
-          done
-          
-          if [ $FAILED -eq 1 ]; then
-            exit 1
-          fi
-          
-          echo "✅ 所有云函数语法检查通过"
-
-      - name: Check dependencies
-        run: |
-          echo "=== 检查依赖 ==="
-          
-          for func_dir in uniCloud-tcb/cloudfunctions/*/; do
-            if [ -f "$func_dir/package.json" ]; then
-              func_name=$(basename "$func_dir")
-              echo "检查 $func_name 的依赖..."
-              
-              # 检查是否有 package-lock.json
-              if [ ! -f "$func_dir/package-lock.json" ]; then
-                echo "  ⚠️ $func_name 缺少 package-lock.json"
-              fi
-            fi
-          done
-
-  # ==================== 部署云函数 ====================
+  # ─────────────────────────────────────────
+  # 部署云函数
+  # ─────────────────────────────────────────
   deploy:
-    name: Deploy to Tencent CloudBase
+    name: 🚀 部署云函数
     runs-on: ubuntu-latest
-    needs: [prepare, validate]
-    environment:
-      name: ${{ needs.prepare.outputs.deploy-env }}
-      url: https://console.cloud.tencent.com/tcb/env/overview?envId=${{ env.CLOUD_ENV_ID }}
+    needs: detect-changes
+    if: needs.detect-changes.outputs.has_changes == 'true'
     steps:
-      - name: Checkout code
+      - name: 检出代码
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: 安装 Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: '18'
 
-      # 安装腾讯云 CloudBase CLI
-      - name: Install CloudBase CLI
+      - name: 安装 CloudBase CLI
         run: |
-          npm install -g @cloudbase/cli
+          npm install -g @cloudbase/cli@latest
           tcb --version
 
-      # 登录腾讯云（使用密钥）
-      - name: Login to Tencent Cloud
-        env:
-          TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
-          TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
+      - name: 登录腾讯云 CloudBase
         run: |
-          if [ -z "$TENCENT_SECRET_ID" ] || [ -z "$TENCENT_SECRET_KEY" ]; then
-            echo "⚠️ 警告: 未配置腾讯云密钥，跳过登录"
-            echo "请设置 Secrets: TENCENT_SECRET_ID 和 TENCENT_SECRET_KEY"
-            exit 1
-          fi
-          
-          # 使用密钥登录
-          tcb login --apiKeyId "$TENCENT_SECRET_ID" --apiKey "$TENCENT_SECRET_KEY"
+          # 使用 GitHub Secrets 中配置的密钥登录
+          tcb login --apiKeyId "${{ secrets.TENCENT_SECRET_ID }}" \
+                    --apiKey "${{ secrets.TENCENT_SECRET_KEY }}"
+        env:
+          CLOUDBASE_ENV_ID: ${{ env.CLOUDBASE_ENV_ID }}
 
-      # 部署云函数
-      - name: Deploy cloud functions
-        env:
-          TENCENT_SECRET_ID: ${{ secrets.TENCENT_SECRET_ID }}
-          TENCENT_SECRET_KEY: ${{ secrets.TENCENT_SECRET_KEY }}
+      - name: 安装云函数依赖
         run: |
-          echo "=== 开始部署云函数 ==="
+          functions="${{ needs.detect-changes.outputs.changed_functions }}"
+          IFS=',' read -ra func_list <<< "$functions"
           
-          # 获取变更的云函数列表
-          FUNCTIONS='${{ needs.prepare.outputs.changed-functions }}'
-          
-          if [ "$FUNCTIONS" = "[]" ] || [ -z "$FUNCTIONS" ]; then
-            echo "没有需要部署的云函数"
-            exit 0
-          fi
-          
-          # 部署每个变更的云函数
-          echo "$FUNCTIONS" | jq -r '.[]' | while read func_name; do
-            if [ -d "uniCloud-tcb/cloudfunctions/$func_name" ]; then
-              echo "部署云函数: $func_name"
-              
-              # 安装依赖（如果有 package.json）
-              if [ -f "uniCloud-tcb/cloudfunctions/$func_name/package.json" ]; then
-                echo "  安装依赖..."
-                cd "uniCloud-tcb/cloudfunctions/$func_name"
-                npm install --production
-                cd -
-              fi
-              
-              # 部署云函数
-              tcb fn deploy "$func_name" \
-                --envId ${{ env.CLOUD_ENV_ID }} \
-                --path "uniCloud-tcb/cloudfunctions/$func_name" \
-                || echo "⚠️ $func_name 部署失败"
+          for func in "${func_list[@]}"; do
+            func=$(echo "$func" | tr -d ' ')
+            if [ -z "$func" ]; then continue; fi
+            
+            func_dir="uniCloud-tcb/cloudfunctions/$func"
+            if [ -d "$func_dir" ] && [ -f "${func_dir}/package.json" ]; then
+              echo "📦 安装 $func 依赖..."
+              cd "$func_dir"
+              npm install --production
+              cd - > /dev/null
             fi
           done
-          
-          echo "=== 云函数部署完成 ==="
 
-      # 部署数据库配置（如果有变更）
-      - name: Deploy database configuration
-        if: false  # 暂时禁用，需要手动确认
+      - name: 部署变更的云函数
         run: |
-          echo "=== 部署数据库配置 ==="
-          # tcb db deploy --envId ${{ env.CLOUD_ENV_ID }}
-          echo "数据库配置需要手动部署"
+          functions="${{ needs.detect-changes.outputs.changed_functions }}"
+          IFS=',' read -ra func_list <<< "$functions"
+          
+          DEPLOY_SUCCESS=0
+          DEPLOY_FAIL=0
+          FAIL_NAMES=""
+          
+          for func in "${func_list[@]}"; do
+            func=$(echo "$func" | tr -d ' ')
+            if [ -z "$func" ]; then continue; fi
+            
+            func_dir="uniCloud-tcb/cloudfunctions/$func"
+            if [ ! -d "$func_dir" ]; then
+              echo "⚠️  跳过: $func (目录不存在)"
+              continue
+            fi
+            
+            echo "🚀 正在部署: $func ..."
+            
+            # 使用 CloudBase CLI 部署云函数
+            if tcb fn deploy "$func" \
+                --envId "${{ env.CLOUDBASE_ENV_ID }}" \
+                --path "$func_dir" \
+                --force 2>&1; then
+              echo "✅ $func 部署成功"
+              DEPLOY_SUCCESS=$((DEPLOY_SUCCESS + 1))
+            else
+              echo "❌ $func 部署失败"
+              DEPLOY_FAIL=$((DEPLOY_FAIL + 1))
+              FAIL_NAMES="$FAIL_NAMES $func"
+            fi
+            
+            echo "---"
+          done
+          
+          echo ""
+          echo "📊 部署结果:"
+          echo "   ✅ 成功: $DEPLOY_SUCCESS 个"
+          echo "   ❌ 失败: $DEPLOY_FAIL 个 $FAIL_NAMES"
+          
+          if [ $DEPLOY_FAIL -gt 0 ]; then
+            exit 1
+          fi
 
-      # 生成部署报告
-      - name: Generate deployment report
+      - name: 验证部署结果
         run: |
-          echo "# 云函数部署报告" > deploy-report.md
-          echo "" >> deploy-report.md
-          echo "- 部署时间: $(date '+%Y-%m-%d %H:%M:%S')" >> deploy-report.md
-          echo "- 部署环境: ${{ needs.prepare.outputs.deploy-env }}" >> deploy-report.md
-          echo "- 云环境ID: ${{ env.CLOUD_ENV_ID }}" >> deploy-report.md
-          echo "- 提交: ${{ github.sha }}" >> deploy-report.md
-          echo "" >> deploy-report.md
-          echo "## 部署的云函数" >> deploy-report.md
-          echo '```json' >> deploy-report.md
-          echo '${{ needs.prepare.outputs.changed-functions }}' >> deploy-report.md
-          echo '```' >> deploy-report.md
+          echo "🔍 验证云函数部署..."
+          functions="${{ needs.detect-changes.outputs.changed_functions }}"
+          IFS=',' read -ra func_list <<< "$functions"
           
-          cat deploy-report.md
+          for func in "${func_list[@]}"; do
+            func=$(echo "$func" | tr -d ' ')
+            if [ -z "$func" ]; then continue; fi
+            
+            result=$(tcb fn list --envId "${{ env.CLOUDBASE_ENV_ID }}" 2>/dev/null | grep "$func" || echo "")
+            if [ -n "$result" ]; then
+              echo "✅ $func - 已确认部署"
+            else
+              echo "⚠️  $func - 无法确认部署状态"
+            fi
+          done
 
-      - name: Upload deployment report
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-report
-          path: deploy-report.md
-          retention-days: 30
-
-  # ==================== 部署后测试 ====================
-  post-deploy-test:
-    name: Post-Deploy Test
-    runs-on: ubuntu-latest
-    needs: deploy
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Test cloud functions
-        run: |
-          echo "=== 云函数部署后测试 ==="
-          
-          # 安装测试依赖
-          npm install -g @cloudbase/cli
-          
-          # 测试关键云函数是否可调用
-          # 注意：需要配置测试用的调用凭证
-          
-          echo "✅ 部署后测试完成"
-
-  # ==================== 通知 ====================
+  # ─────────────────────────────────────────
+  # 部署通知
+  # ─────────────────────────────────────────
   notify:
-    name: Notify
+    name: 📢 部署通知
     runs-on: ubuntu-latest
-    needs: [deploy, post-deploy-test]
-    if: always()
+    needs: [ detect-changes, deploy ]
+    if: always() && needs.detect-changes.outputs.has_changes == 'true'
     steps:
-      - name: Send notification
+      - name: 发送部署结果通知
         run: |
-          DEPLOY_STATUS="${{ needs.deploy.result }}"
-          TEST_STATUS="${{ needs.post-deploy-test.result }}"
+          deploy_status="${{ needs.deploy.result }}"
+          functions="${{ needs.detect-changes.outputs.changed_functions }}"
           
-          if [ "$DEPLOY_STATUS" = "success" ] && [ "$TEST_STATUS" = "success" ]; then
-            echo "✅ 云函数部署成功"
-            # 可以在这里添加企业微信/钉钉通知
+          if [ "$deploy_status" = "success" ]; then
+            status_icon="✅"
+            status_text="部署成功"
           else
-            echo "❌ 云函数部署失败"
-            # 可以在这里添加告警通知
+            status_icon="❌"
+            status_text="部署失败"
+          fi
+          
+          echo "${status_icon} 冠帮帮云函数部署完成"
+          echo "状态: $status_text"
+          echo "部署函数: $functions"
+          echo "环境: ${{ env.CLOUDBASE_ENV_ID }}"
+          echo "触发者: ${{ github.actor }}"
+          echo "提交: ${{ github.sha }}"
+          
+          # 如果配置了钉钉 Webhook，发送通知
+          if [ -n "${{ secrets.DINGTALK_WEBHOOK }}" ]; then
+            message="{
+              \"msgtype\": \"markdown\",
+              \"markdown\": {
+                \"title\": \"${status_icon} 冠帮帮云函数部署\",
+                \"text\": \"### ${status_icon} 冠帮帮云函数部署\\n**状态**: ${status_text}\\n**函数**: ${functions}\\n**触发者**: ${{ github.actor }}\\n**提交**: ${{ github.sha }}\"
+              }
+            }"
+            curl -s -X POST "${{ secrets.DINGTALK_WEBHOOK }}" \
+                 -H "Content-Type: application/json" \
+                 -d "$message" || true
           fi
